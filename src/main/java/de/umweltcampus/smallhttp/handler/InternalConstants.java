@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.handler;
 
 public class InternalConstants {
 

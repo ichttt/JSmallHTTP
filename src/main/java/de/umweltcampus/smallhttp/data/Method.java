@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.data;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

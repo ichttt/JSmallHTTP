@@ -1,7 +1,7 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.handler;
 
 class ReusableClientContext {
-    public byte[] headerBuffer;
+    public final byte[] headerBuffer;
 
     ReusableClientContext() {
         this.headerBuffer = new byte[InternalConstants.MAX_HEADER_SIZE_BYTES];
