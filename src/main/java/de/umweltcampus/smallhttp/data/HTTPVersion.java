@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets;
 public enum HTTPVersion {
     HTTP_1_1("HTTP/1.1"), HTTP_1_0("HTTP/1.0");
 
-    private final String name;
-    private final byte lastByte;
+    public final String name;
+    final byte lastByte;
 
     HTTPVersion(String name) {
         this.name = name;
@@ -14,20 +14,19 @@ public enum HTTPVersion {
         this.lastByte = bytes[bytes.length - 1];
     }
 
-    public String getName() {
-        return name;
-    }
-
-    private static final byte[] COMMON_BYTES = "HTTP/1.".getBytes(StandardCharsets.US_ASCII);
+    static final byte[] COMMON_BYTES = "HTTP/1.".getBytes(StandardCharsets.US_ASCII);
     private static final HTTPVersion[] VALUES = values();
 
-    static {
-        for (HTTPVersion value : VALUES) {
-            assert value.name.equals(new String(COMMON_BYTES, StandardCharsets.US_ASCII) + ((char) value.lastByte));
-        }
-    }
-
+    /**
+     * Finds the matching http version for a given buffer at a given offset.
+     * <strong>CAUTION: You MUST ensure that at least 10 bytes can be read!</strong>
+     * @param buffer The buffer to check
+     * @param offset The offset at which the HTTP Version starts
+     * @return The HTTP version or null if no matching HTTP Version could be found
+     */
     public static HTTPVersion findMatchingVersion(byte[] buffer, int offset) {
+        // Assert the largest index we read is actually in bounds, and we have enough readable bytes
+        assert buffer.length - offset >= 10;
         // Validate start
         for (int i = 0; i < COMMON_BYTES.length; i++) {
             if (buffer[i + offset] != COMMON_BYTES[i]) {
@@ -35,7 +34,7 @@ public enum HTTPVersion {
             }
         }
         // Validate end
-        if (buffer[COMMON_BYTES.length + 1] == '\r' && buffer[COMMON_BYTES.length + 2] == '\n') {
+        if (buffer[offset + COMMON_BYTES.length + 1] != '\r' || buffer[offset + COMMON_BYTES.length + 2] != '\n') {
             return null;
         }
         // choose right version
