@@ -3,6 +3,8 @@ package de.umweltcampus.smallhttp.data;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class HTTPVersionTest {
@@ -59,5 +61,15 @@ public class HTTPVersionTest {
         byte[] data = "GET / HTTP/1.1\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
         HTTPVersion matchingVersion = HTTPVersion.findMatchingVersion(data, 7);
         Assertions.assertNull(matchingVersion);
+    }
+
+    @Test
+    public void testWriteToHeader() throws IOException {
+        for (HTTPVersion version : HTTPVersion.values()) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            version.writeToHeader(outputStream);
+            String resultingString = outputStream.toString(StandardCharsets.US_ASCII);
+            Assertions.assertEquals(version.name + " ", resultingString, "Failed at version " + version);
+        }
     }
 }

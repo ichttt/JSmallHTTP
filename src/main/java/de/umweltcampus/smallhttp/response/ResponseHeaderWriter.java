@@ -1,5 +1,7 @@
 package de.umweltcampus.smallhttp.response;
 
+import java.io.IOException;
+
 /**
  * An interface that allows the application to write header data or continue to the body once it finishes.
  */
@@ -35,7 +37,7 @@ public interface ResponseHeaderWriter {
      * @param size The size of the body
      * @return The new body writer
      */
-    ResponseBodyWriter beginBodyWithKnownSize(int size);
+    ResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException;
 
     /**
      * Ends writing of the header and begins to write the body.
@@ -47,5 +49,5 @@ public interface ResponseHeaderWriter {
      * In that case, the connection to the client will be forcibly closed!
      * @return The new body writer
      */
-    ResponseBodyWriter beginBodyWithUnknownSize();
+    ResponseBodyWriter beginBodyWithUnknownSize() throws IOException;
 }

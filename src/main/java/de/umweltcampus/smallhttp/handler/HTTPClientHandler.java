@@ -2,11 +2,12 @@ package de.umweltcampus.smallhttp.handler;
 
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
+import de.umweltcampus.smallhttp.data.Status;
+import de.umweltcampus.smallhttp.response.ResponseBodyWriter;
+import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -59,12 +60,16 @@ public class HTTPClientHandler implements Runnable {
         httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
 
         // TEST CODE BELOW
-        OutputStream outputStream = socket.getOutputStream();
-        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream);
-        // Firefox is amazing and displays anything I throw at it. Doesn't even need to be a proper HTTP response
-        outputStreamWriter.write("Das ist ein Test!");
-        outputStreamWriter.flush();
-        outputStreamWriter.close();
+        ResponseStartWriter writer = new ResponseWriter(socket.getOutputStream(), context, httpRequest.getVersion());
+        String content = "Das ist ein Test!";
+        ResponseBodyWriter responseBodyWriter = writer.respond(Status.OK)
+                .addHeader("Server", "JSmallHTTP")
+                .addHeader("Content-Length", content.length() + "")
+                .addHeader("Content-Type", "text/plain")
+                .addHeader("Date", "Tue, 15 Nov 1994 08:12:31 GMT")
+                .beginBodyWithKnownSize(content.length());
+        responseBodyWriter.writeString(content);
+        responseBodyWriter.finalizeResponse();
     }
 
     private HTTPRequest parseRequestLine(byte[] headerBuffer, int availableBytes) {

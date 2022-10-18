@@ -1,5 +1,9 @@
 package de.umweltcampus.smallhttp.data;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 
 // See https://www.rfc-editor.org/rfc/rfc9110#name-status-codes
@@ -24,6 +28,7 @@ public enum Status {
 
     public final int code;
     public final String httpName;
+    private final byte[] responseBytes;
 
     Status(int code) {
         this.code = code;
@@ -42,5 +47,21 @@ public enum Status {
             }
         }
         this.httpName = builder.toString();
+
+        byte[] httpNameBytes = this.httpName.getBytes(StandardCharsets.US_ASCII);
+        byte[] codeAsStringBytes = Integer.toString(this.code).getBytes(StandardCharsets.US_ASCII);
+        assert codeAsStringBytes.length == 3;
+        // version number + plus + version string + CR LF
+        this.responseBytes = Arrays.copyOf(codeAsStringBytes, codeAsStringBytes.length + 1 + httpNameBytes.length + 2);
+        this.responseBytes[codeAsStringBytes.length] = ' ';
+        for (int i = 0; i < httpNameBytes.length; i++) {
+            this.responseBytes[i + codeAsStringBytes.length + 1] = httpNameBytes[i];
+        }
+        this.responseBytes[this.responseBytes.length - 2] = '\r';
+        this.responseBytes[this.responseBytes.length - 1] = '\n';
+    }
+
+    public void writeToHeader(OutputStream stream) throws IOException {
+        stream.write(this.responseBytes);
     }
 }

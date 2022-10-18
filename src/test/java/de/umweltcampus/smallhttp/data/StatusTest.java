@@ -3,6 +3,10 @@ package de.umweltcampus.smallhttp.data;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 public class StatusTest {
 
     @Test
@@ -21,6 +25,16 @@ public class StatusTest {
         for (Status allStatusCode : Status.values()) {
             String nameWithSpaces = allStatusCode.name().replace('_', ' ');
             Assertions.assertTrue(allStatusCode.httpName.equalsIgnoreCase(nameWithSpaces), "Name for " + allStatusCode + " is invalid!");
+        }
+    }
+
+    @Test
+    public void testWriteToHeader() throws IOException {
+        for (Status status : Status.values()) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            status.writeToHeader(outputStream);
+            String resultingString = outputStream.toString(StandardCharsets.US_ASCII);
+            Assertions.assertEquals(status.code + " " + status.httpName + "\r\n", resultingString, "Failed at status " + status);
         }
     }
 }

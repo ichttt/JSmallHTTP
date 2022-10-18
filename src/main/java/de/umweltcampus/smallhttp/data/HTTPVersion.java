@@ -1,17 +1,23 @@
 package de.umweltcampus.smallhttp.data;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public enum HTTPVersion {
     HTTP_1_1("HTTP/1.1"), HTTP_1_0("HTTP/1.0");
 
     public final String name;
+    private final byte[] responseBytes;
     final byte lastByte;
 
     HTTPVersion(String name) {
         this.name = name;
         byte[] bytes = name.getBytes(StandardCharsets.US_ASCII);
         this.lastByte = bytes[bytes.length - 1];
+        this.responseBytes = Arrays.copyOf(bytes, bytes.length + 1);
+        this.responseBytes[bytes.length] = ' ';
     }
 
     static final byte[] COMMON_BYTES = "HTTP/1.".getBytes(StandardCharsets.US_ASCII);
@@ -44,5 +50,9 @@ public enum HTTPVersion {
             }
         }
         return null;
+    }
+
+    public void writeToHeader(OutputStream stream) throws IOException {
+        stream.write(this.responseBytes);
     }
 }
