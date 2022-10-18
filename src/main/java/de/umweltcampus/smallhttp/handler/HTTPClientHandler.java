@@ -23,16 +23,20 @@ public class HTTPClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            handleRequest(this.socket);
-            this.socket.close();
+            ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
+            try {
+                handleRequest(this.socket, context);
+                this.socket.close();
+            } finally {
+                context.reset();
+            }
         } catch (IOException e) {
             // TODO handle
             throw new RuntimeException(e);
         }
     }
 
-    private void handleRequest(Socket socket) throws IOException {
-        ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
+    private void handleRequest(Socket socket, ReusableClientContext context) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
 
         // Read the first bytes into a buffer, hopefully containing the entire header

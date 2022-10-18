@@ -14,10 +14,10 @@ public class InternalConstants {
     /**
      * Maximum header size, larger will result in an error being returned to the client
      */
-    public static final int MAX_HEADER_SIZE_BYTES = 4 * 1024;
+    public static final int MAX_HEADER_SIZE_BYTES = 8 * 1024;
 
     /**
      * Maximum request target (=request URL before URLDecoding)
      */
-    public static final int MAX_REQUEST_TARGET_LENGTH = 2 * 1024;
+    public static final int MAX_REQUEST_TARGET_LENGTH = 4 * 1024;
 }
