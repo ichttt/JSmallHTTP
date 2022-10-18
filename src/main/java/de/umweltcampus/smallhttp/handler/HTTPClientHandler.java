@@ -39,11 +39,12 @@ public class HTTPClientHandler implements Runnable {
         InputStream inputStream = socket.getInputStream();
         // TODO check that the header is completely within the bytes
         int availableBytes = inputStream.read(headerBuffer);
-        HTTPRequest httpRequest = parseStatusLine(headerBuffer, availableBytes);
+        HTTPRequest httpRequest = parseRequestLine(headerBuffer, availableBytes);
         if (httpRequest == null) return; // An error occurred while parsing the status line. This means also an error was already returned
 
         if (httpRequest.getMethod() == Method.CONNECT || httpRequest.getMethod() == Method.TRACE) {
             // This server implementation doesn't implement these methods
+            // We send a 501 response to indicate this (see https://www.rfc-editor.org/rfc/rfc9110#section-9)
             // TODO send 501
             return;
         }
@@ -62,8 +63,8 @@ public class HTTPClientHandler implements Runnable {
         outputStreamWriter.close();
     }
 
-    private HTTPRequest parseStatusLine(byte[] headerBuffer, int availableBytes) {
-        // Parse the status line according to https://www.rfc-editor.org/rfc/rfc7230#section-2.1
+    private HTTPRequest parseRequestLine(byte[] headerBuffer, int availableBytes) {
+        // Parse the request line according to https://www.rfc-editor.org/rfc/rfc9112#name-request-line
 
         // We do this check so that Method.findMatchingMethod never reads stale data
         if (availableBytes < InternalConstants.MINIMUM_HEADER_LENGTH_BYTES) {
@@ -91,7 +92,7 @@ public class HTTPClientHandler implements Runnable {
         read = pathEnd + 1; // plus one for the space
 
         // Now comes the http version information
-        // According to rfc7230, this part consists of exactly 8 bytes plus two bytes that must follow to end the status line
+        // According to rfc9012, this part consists of exactly 8 bytes plus two bytes that must follow to end the status line
         if ((read + 10) > availableBytes) {
             // TODO respond with bad request
             return null;
@@ -99,7 +100,7 @@ public class HTTPClientHandler implements Runnable {
         // The next ten bytes can be read, examine the HTTP version now
         HTTPVersion matchingVersion = HTTPVersion.findMatchingVersion(headerBuffer, read);
         if (matchingVersion == null) {
-            // In theory, we should respond with 505 (see https://www.rfc-editor.org/rfc/rfc7231#section-6.6.6)
+            // In theory, we should respond with 505 (see https://www.rfc-editor.org/rfc/rfc9110#name-505-http-version-not-suppor)
             // but as http/1.0 and http/1.1 are the only http/1 versions, and http/2 works completely different and would thous not even reach here, we can ignore this
             // TODO respond with bad request
             return null;
@@ -136,7 +137,7 @@ public class HTTPClientHandler implements Runnable {
             int valueLength = valueEnd - read;
             String value;
             if (valueLength > 0) {
-                // Not ASCII as standard, but Latin-1. See https://www.rfc-editor.org/rfc/rfc7230#section-3.2.4
+                // Not ASCII as standard, but Latin-1. See https://www.rfc-editor.org/rfc/rfc9110#name-field-values
                 // Also, trim as optional whitespace before and after are allowed
                 value = new String(headerBuffer, read, valueLength, StandardCharsets.ISO_8859_1).trim();
             } else {
@@ -183,8 +184,9 @@ public class HTTPClientHandler implements Runnable {
                 return i;
             }
             // This is used for header parsing, so forbid any space/tabs as white space in header names is forbidden
-            // See https://www.rfc-editor.org/rfc/rfc7230#section-3.2.4
-            if (byteAtPos == ' ' || byteAtPos == '\t' || byteAtPos == '\r' || byteAtPos == '\n') {
+            // also, CR LF and NUL are forbidden and must be rejected
+            // See https://www.rfc-editor.org/rfc/rfc9110#section-9
+            if (byteAtPos == ' ' || byteAtPos == '\t' || byteAtPos == '\r' || byteAtPos == '\n' || byteAtPos == '\0') {
                 return -1;
             }
         }

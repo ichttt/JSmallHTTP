@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public enum Method {
-    // See https://www.rfc-editor.org/rfc/rfc7231#section-4.1
+    // See https://www.rfc-editor.org/rfc/rfc9110#section-9
     GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE;
 
     Method() {
