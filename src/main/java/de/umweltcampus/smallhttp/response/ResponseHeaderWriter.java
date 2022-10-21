@@ -72,12 +72,13 @@ public interface ResponseHeaderWriter {
      * Ends writing of headers and writes a string to the message body and flushes the output to the client.
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
+     * @return The response token that must be returned to the
      */
-    default void writeBodyAndFlush(String s) throws IOException {
+    default ResponseToken writeBodyAndFlush(String s) throws IOException {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
         ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
         responseBodyWriter.getRawOutputStream().write(bytes);
-        responseBodyWriter.finalizeResponse();
+        return responseBodyWriter.finalizeResponse();
     }
 
     /**
@@ -85,9 +86,9 @@ public interface ResponseHeaderWriter {
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      */
-    default void writeBodyAndFlush(byte[] bytes) throws IOException {
+    default ResponseToken writeBodyAndFlush(byte[] bytes) throws IOException {
         ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
         responseBodyWriter.getRawOutputStream().write(bytes);
-        responseBodyWriter.finalizeResponse();
+        return responseBodyWriter.finalizeResponse();
     }
 }

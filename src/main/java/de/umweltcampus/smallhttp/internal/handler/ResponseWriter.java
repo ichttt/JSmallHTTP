@@ -9,6 +9,7 @@ import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.response.ResponseBodyWriter;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
+import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -139,12 +140,13 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public void finalizeResponse() throws IOException {
-        if (completed) return;
+    public ResponseToken finalizeResponse() throws IOException {
+        if (completed) throw new IllegalStateException();
 
         if (!startedSendingData) sendHeader();
         this.stream.flush();
         this.completed = true;
+        return ResponseTokenImpl.get();
     }
 
     /**

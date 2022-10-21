@@ -1,11 +1,13 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
+import de.umweltcampus.smallhttp.ResponseHandler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
+import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,10 +18,12 @@ import java.nio.charset.StandardCharsets;
 public class HTTPClientHandler implements Runnable {
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
     private final Socket socket;
+    private final ResponseHandler handler;
     private int read;
 
-    public HTTPClientHandler(Socket socket) {
+    public HTTPClientHandler(Socket socket, ResponseHandler handler) {
         this.socket = socket;
+        this.handler = handler;
     }
 
     @Override
@@ -47,27 +51,35 @@ public class HTTPClientHandler implements Runnable {
         InputStream inputStream = socket.getInputStream();
         int availableBytes = inputStream.read(headerBuffer);
         HTTPRequest httpRequest = parseRequestLine(context, availableBytes);
-        if (httpRequest == null) return; // An error occurred while parsing the status line. This means also an error was already returned
+        if (httpRequest == null) {
+            ResponseTokenImpl.clearTracking(true);
+            return; // An error occurred while parsing the status line. This means also an error was already returned
+        }
 
         if (httpRequest.getMethod() == Method.CONNECT || httpRequest.getMethod() == Method.TRACE) {
             // This server implementation doesn't implement these methods
             // We send a 501 response to indicate this (see https://www.rfc-editor.org/rfc/rfc9110#section-9)
-            newWriter(context, httpRequest.getVersion()).respond(Status.NOT_IMPLEMENTED, "Method " + httpRequest.getMethod() + " is not implemented");
+            ResponseToken token = newWriter(context, httpRequest.getVersion())
+                    .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
+                    .writeBodyAndFlush("Method " + httpRequest.getMethod() + " is not implemented");
+            ResponseTokenImpl.validate(token);
             return;
         }
         boolean success = parseHeaders(context, availableBytes, httpRequest);
         if (!success) {
+            ResponseTokenImpl.clearTracking(true);
             return; // Should have already sent a response
         }
         httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
 
-        // TEST CODE BELOW
-        // TDO remove
-        ResponseStartWriter writer = new ResponseWriter(socket.getOutputStream(), context, httpRequest.getVersion());
-        writer
-                .respond(Status.OK, CommonContentTypes.PLAIN)
-                .addHeader(ETAG, "iuewjolAD")
-                .writeBodyAndFlush("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Proin nibh nisl condimentum id. Ipsum nunc aliquet bibendum enim facilisis gravida neque convallis. Adipiscing at in tellus integer. Tempor orci eu lobortis elementum nibh tellus molestie nunc non. Posuere urna nec tincidunt praesent. Pellentesque habitant morbi tristique senectus et netus et. Non diam phasellus vestibulum lorem. Metus vulputate eu scelerisque felis imperdiet. Tortor at risus viverra adipiscing at.");
+        try {
+            ResponseToken token = this.handler.answerRequest(httpRequest, newWriter(context, httpRequest.getVersion()));
+            if (!ResponseTokenImpl.validate(token))
+                throw new RuntimeException("Invalid token returned from handler!");
+        } catch (Exception e) {
+            // TODO handle properly
+            throw new RuntimeException(e);
+        }
     }
 
     private HTTPRequest parseRequestLine(ReusableClientContext context, int availableBytes) throws IOException {

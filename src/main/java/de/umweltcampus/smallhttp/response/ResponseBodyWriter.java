@@ -16,8 +16,8 @@ public interface ResponseBodyWriter {
 
     /**
      * Finalizes the response and flushes it to the client.
-     * This is also implicitly called once the application finishes its processRequest method.
-     * Use this by hand when the response is complete but the code still needs some processing time or wants to make sure that the client got the response before doing something else
+     * This must be called when the response is completed.
+     * @return A response token that must be returned, marking the response as complete
      */
-    void finalizeResponse() throws IOException;
+    ResponseToken finalizeResponse() throws IOException;
 }
