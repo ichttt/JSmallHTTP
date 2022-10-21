@@ -2,7 +2,8 @@ package de.umweltcampus.smallhttp.handler;
 
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Status;
-import de.umweltcampus.smallhttp.response.ResponseBodyWriter;
+import de.umweltcampus.smallhttp.header.CommonContentTypes;
+import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -11,64 +12,60 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseWriterTest {
+    private static final PrecomputedHeaderKey ETAG = new PrecomputedHeaderKey("ETag");
 
     @Test
     public void testEmptyHeaderWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
-        writer.respond(Status.OK)
-                .beginBodyWithUnknownSize()
+        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        writer.respond(Status.OK, CommonContentTypes.PLAIN)
+                .beginBodyWithKnownSize(0)
                 .finalizeResponse();
 
-        // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\n\r\n", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nContent-Length:0\r\n\r\n", s);
     }
 
     @Test
     public void testSingleHeaderWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
-        writer.respond(Status.OK)
-                .addHeader("Server", "ABCTest")
-                .beginBodyWithUnknownSize()
+        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        writer.respond(Status.OK, CommonContentTypes.PLAIN)
+                .addHeader(ETAG, "ABCTest")
+                .beginBodyWithKnownSize(0)
                 .finalizeResponse();
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nServer:ABCTest\r\n\r\n", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:0\r\n\r\n", s);
     }
 
     @Test
     public void testBodyWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
-        ResponseBodyWriter responseBodyWriter = writer.respond(Status.OK)
-                .addHeader("Server", "ABCTest")
-                .beginBodyWithUnknownSize();
-        responseBodyWriter.writeString("Das ist ein Test!");
-        responseBodyWriter.finalizeResponse();
+        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        writer.respond(Status.OK, CommonContentTypes.PLAIN)
+                .addHeader(ETAG, "ABCTest")
+                .writeBodyAndFlush("Das ist ein Test!");
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nServer:ABCTest\r\n\r\nDas ist ein Test!", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
     }
 
     @Test
     public void testBuilderReset() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
-        ResponseBodyWriter responseBodyWriter = writer.respond(Status.OK)
-                .addHeader("Server", "ABCTest")
+        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        writer.respond(Status.OK, CommonContentTypes.PLAIN)
+                .addHeader(ETAG, "ABCTest")
                 .resetResponseBuilder()
-                .respond(Status.INTERNAL_SERVER_ERROR)
-                .addHeader("Server", "Test2")
-                .beginBodyWithUnknownSize();
-        responseBodyWriter.writeString("Das ist ein Test!");
-        responseBodyWriter.finalizeResponse();
+                .respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN)
+                .addHeader(ETAG, "Test2")
+                .writeBodyAndFlush("Das ist ein Test!");
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 500 Internal Server Error\r\nServer:Test2\r\n\r\nDas ist ein Test!", s);
+        Assertions.assertEquals("HTTP/1.1 500 Internal Server Error\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:Test2\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
     }
 }

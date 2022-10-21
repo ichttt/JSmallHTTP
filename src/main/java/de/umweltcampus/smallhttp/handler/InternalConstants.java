@@ -20,4 +20,9 @@ public class InternalConstants {
      * Maximum request target (=request URL before URLDecoding)
      */
     public static final int MAX_REQUEST_TARGET_LENGTH = 4 * 1024;
+
+    // See https://www.rfc-editor.org/rfc/rfc9110#section-9
+    public static final char[] FORBIDDEN_HEADER_NAME_CHARS = new char[] {' ', '\t', '\r', '\n', '\0'};
+
+    public static final char[] FORBIDDEN_HEADER_VALUE_CHARS = new char[] {'\r', '\n', '\0'};
 }

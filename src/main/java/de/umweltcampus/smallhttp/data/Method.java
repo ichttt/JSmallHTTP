@@ -5,7 +5,10 @@ import java.util.Arrays;
 
 public enum Method {
     // See https://www.rfc-editor.org/rfc/rfc9110#section-9
-    GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE;
+    GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE,
+    // Also, many other methods are defined in https://www.iana.org/assignments/http-methods/http-methods.xhtml
+    // Most other methods are WebDAV-related, so they will be omitted in this library, which only leaves the PATCH method specified in https://www.rfc-editor.org/rfc/rfc5789
+    PATCH;
 
     Method() {
         byte[] nameAsAsciiBytes = name().getBytes(StandardCharsets.US_ASCII);

@@ -1,6 +1,11 @@
 package de.umweltcampus.smallhttp.response;
 
+import de.umweltcampus.smallhttp.header.BuiltinHeaders;
+import de.umweltcampus.smallhttp.header.PrecomputedHeader;
+import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
+
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * An interface that allows the application to write header data or continue to the body once it finishes.
@@ -10,13 +15,25 @@ public interface ResponseHeaderWriter {
     /**
      * Add custom headers to the request, like Set-Cookie or other relevant headers.
      * <br>
-     * Some headers get set by the Server itself, see {@link BuiltinHeaders}.
-     * If any of these headers is specified, the server will not set its corresponding builtin header and will instead use the user-supplied value
-     * @param name The name of the header. The name must not contain any spaces, new lines or null bytes
-     * @param value The value of the header.
+     * If the value of the header is a constant, use {@link #addHeader(PrecomputedHeader)} instead.
+     * <br>
+     * Some headers get set by the Server itself, see {@link BuiltinHeaders}. These should not be set by hand.
+     * @param name The name of the header. The precomputed header key should be computed once (like in a static final field)
+     * @param value The value of the header
      * @return The current header writer to add more headers or start with the body
      */
-    ResponseHeaderWriter addHeader(String name, String value);
+    ResponseHeaderWriter addHeader(PrecomputedHeaderKey name, String value);
+
+    /**
+     * Add custom headers to the request, like Set-Cookie or other relevant headers.
+     * <br>
+     * If the value of the header is <strong>NOT</strong> a constant, use {@link #addHeader(PrecomputedHeaderKey, String)} instead.
+     * <br>
+     * Some headers get set by the Server itself, see {@link BuiltinHeaders}. These should not be set by hand.
+     * @param header The complete header. The precomputed header should be computed once (like in a static final field)
+     * @return The current header writer to add more headers or start with the body
+     */
+    ResponseHeaderWriter addHeader(PrecomputedHeader header);
 
     /**
      * Resets the entire response builder, allowing the response to be filled again.
@@ -27,7 +44,7 @@ public interface ResponseHeaderWriter {
     ResponseStartWriter resetResponseBuilder();
 
     /**
-     * Ends writing of the header and begins to write the body.
+     * Ends writing of the headers and begins to write the body.
      * Usage of this method is strongly preferred over {@link #beginBodyWithUnknownSize()}.
      * This header writer becomes invalid once this is called.
      * <br>
@@ -40,7 +57,7 @@ public interface ResponseHeaderWriter {
     ResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException;
 
     /**
-     * Ends writing of the header and begins to write the body.
+     * Ends writing of the headers and begins to write the body.
      * Use this only if the length of the response can't be determined easily. Otherwise, use {@link #beginBodyWithKnownSize(int)}.
      * This header writer becomes invalid once this is called.
      * <br>
@@ -50,4 +67,27 @@ public interface ResponseHeaderWriter {
      * @return The new body writer
      */
     ResponseBodyWriter beginBodyWithUnknownSize() throws IOException;
+
+    /**
+     * Ends writing of headers and writes a string to the message body and flushes the output to the client.
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
+     * This header writer becomes invalid once this is called.
+     */
+    default void writeBodyAndFlush(String s) throws IOException {
+        byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+        ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
+        responseBodyWriter.getRawOutputStream().write(bytes);
+        responseBodyWriter.finalizeResponse();
+    }
+
+    /**
+     * Ends writing of headers and writes a byte array to the message body and flushes the output to the client.
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
+     * This header writer becomes invalid once this is called.
+     */
+    default void writeBodyAndFlush(byte[] bytes) throws IOException {
+        ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
+        responseBodyWriter.getRawOutputStream().write(bytes);
+        responseBodyWriter.finalizeResponse();
+    }
 }
