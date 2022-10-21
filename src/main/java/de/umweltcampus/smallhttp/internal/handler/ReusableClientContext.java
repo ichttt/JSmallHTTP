@@ -1,7 +1,4 @@
-package de.umweltcampus.smallhttp.handler;
-
-import java.util.ArrayList;
-import java.util.List;
+package de.umweltcampus.smallhttp.internal.handler;
 
 class ReusableClientContext {
     public final byte[] headerBuffer;

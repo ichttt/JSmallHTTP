@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp.handler;
+package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Status;

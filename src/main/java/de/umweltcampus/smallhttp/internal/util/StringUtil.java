@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp.util;
+package de.umweltcampus.smallhttp.internal.util;
 
 import java.util.Locale;
 

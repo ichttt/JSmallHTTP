@@ -1,6 +1,6 @@
 package de.umweltcampus.smallhttp.header;
 
-import de.umweltcampus.smallhttp.handler.InternalConstants;
+import de.umweltcampus.smallhttp.internal.handler.InternalConstants;
 
 import java.nio.charset.StandardCharsets;
 

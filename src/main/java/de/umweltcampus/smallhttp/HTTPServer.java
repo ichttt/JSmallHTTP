@@ -1,6 +1,6 @@
 package de.umweltcampus.smallhttp;
 
-import de.umweltcampus.smallhttp.handler.HTTPClientHandler;
+import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
 
 import java.io.IOException;
 import java.net.ServerSocket;
