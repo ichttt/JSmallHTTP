@@ -6,6 +6,7 @@ import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
+import de.umweltcampus.smallhttp.internal.util.HeaderParsingHelper;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 
@@ -14,6 +15,7 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 public class HTTPClientHandler implements Runnable {
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
@@ -30,13 +32,20 @@ public class HTTPClientHandler implements Runnable {
     public void run() {
         try {
             ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
-            try {
-                handleRequest(this.socket, context);
-                this.socket.close();
-            } finally {
-                context.reset();
-            }
-        } catch (IOException e) {
+            boolean keepAlive;
+            int useCount = 0;
+            do {
+                useCount++;
+                System.out.println("Existing connection used for the " + useCount + "time");
+                try {
+                    keepAlive = handleRequest(this.socket, context);
+                } finally {
+                    context.reset();
+                }
+            } while (keepAlive);
+            this.socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
             // TODO handle
             throw new RuntimeException(e);
         }
@@ -44,16 +53,17 @@ public class HTTPClientHandler implements Runnable {
 
     private static final PrecomputedHeaderKey ETAG = new PrecomputedHeaderKey("ETag");
 
-    private void handleRequest(Socket socket, ReusableClientContext context) throws IOException {
+    private boolean handleRequest(Socket socket, ReusableClientContext context) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
 
         // Read the first bytes into a buffer, hopefully containing the entire header
         InputStream inputStream = socket.getInputStream();
-        int availableBytes = inputStream.read(headerBuffer);
+        int availableBytes;
+        availableBytes = inputStream.read(headerBuffer);
         HTTPRequest httpRequest = parseRequestLine(context, availableBytes);
         if (httpRequest == null) {
             ResponseTokenImpl.clearTracking(true);
-            return; // An error occurred while parsing the status line. This means also an error was already returned
+            return false; // An error occurred while parsing the status line. This means also an error was already returned
         }
 
         if (httpRequest.getMethod() == Method.CONNECT || httpRequest.getMethod() == Method.TRACE) {
@@ -63,12 +73,12 @@ public class HTTPClientHandler implements Runnable {
                     .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
                     .writeBodyAndFlush("Method " + httpRequest.getMethod() + " is not implemented");
             ResponseTokenImpl.validate(token);
-            return;
+            return false;
         }
         boolean success = parseHeaders(context, availableBytes, httpRequest);
         if (!success) {
             ResponseTokenImpl.clearTracking(true);
-            return; // Should have already sent a response
+            return false; // Should have already sent a response
         }
         httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
 
@@ -79,6 +89,16 @@ public class HTTPClientHandler implements Runnable {
         } catch (Exception e) {
             // TODO handle properly
             throw new RuntimeException(e);
+        }
+        // We finished the request. Now we need to check if we should persist the current connection
+        // See https://www.rfc-editor.org/rfc/rfc9112#section-9.3 for this
+        String connection = httpRequest.getFirstHeader("connection");
+        if ("close".equals(connection)) {
+            return false;
+        } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1 || "keep-alive".equals(connection)) {
+            return true;
+        } else {
+            return false;
         }
     }
 

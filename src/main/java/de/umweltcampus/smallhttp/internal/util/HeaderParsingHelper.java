@@ -1,13 +1,14 @@
-package de.umweltcampus.smallhttp.internal.handler;
+package de.umweltcampus.smallhttp.internal.util;
 
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
+import de.umweltcampus.smallhttp.internal.handler.InternalConstants;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-class HeaderParsingHelper {
+public class HeaderParsingHelper {
     /** Returned when an invalid char in the sequence was found before the searched char */
     private static final int INVALID_CHAR_FOUND = -1;
     /** Returned when the char could not be found and the end was reached */
@@ -17,7 +18,7 @@ class HeaderParsingHelper {
     private static final byte[] URI_END_REACHED_TEXT = ("Request URI was too large, entire uri must fit into " + InternalConstants.MAX_REQUEST_TARGET_LENGTH + " bytes!").getBytes(StandardCharsets.UTF_8);
     private static final byte[] END_REACHED_TEXT = ("Header was too large, entire header must fit into " + InternalConstants.MAX_HEADER_SIZE_BYTES + " bytes!").getBytes(StandardCharsets.UTF_8);
 
-    static void handleError(ResponseStartWriter writer, boolean inUri, int errorCode) throws IOException {
+    public static void handleError(ResponseStartWriter writer, boolean inUri, int errorCode) throws IOException {
         if (errorCode == INVALID_CHAR_FOUND) {
             writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush(INVALID_CHAR_FOUND_TEXT);
         } else if (errorCode == END_REACHED) {
@@ -39,7 +40,7 @@ class HeaderParsingHelper {
      * @param max The last position in the array to search
      * @return The index of the space, or one of the error codes defined at the start of the file
      */
-    static int findRequestLineSplit(byte[] toSearch, int start, int max) {
+    public static int findRequestLineSplit(byte[] toSearch, int start, int max) {
         assert start < max;
         for (int i = start; i < max; i++) {
             byte byteAtPos = toSearch[i];
@@ -60,7 +61,7 @@ class HeaderParsingHelper {
      * @param max The last position in the array to search
      * @return The index of the colon, or one of the error codes defined at the start of the file
      */
-    static int findHeaderSplit(byte[] toSearch, int start, int max) {
+    public static int findHeaderSplit(byte[] toSearch, int start, int max) {
         assert start < max;
         // Max - 1 as we need to find two char, CR and LF
         for (int i = start; i < max; i++) {
@@ -83,7 +84,7 @@ class HeaderParsingHelper {
      * @param max The last position in the array to search
      * @return The index of the LF, or one of the error codes defined at the start of the file
      */
-    static int findHeaderEnd(byte[] toSearch, int start, int max) {
+    public static int findHeaderEnd(byte[] toSearch, int start, int max) {
         assert start < max;
         // Max - 1 as we need to find two char, CR and LF
         for (int i = start; i < (max - 1); i++) {

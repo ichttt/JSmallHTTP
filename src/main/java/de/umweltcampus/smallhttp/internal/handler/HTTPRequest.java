@@ -9,6 +9,7 @@ import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class HTTPRequest {
@@ -39,7 +40,8 @@ public class HTTPRequest {
     void addHeader(String name, String value) {
         assert name != null && !name.isBlank();
         assert value != null;
-        headers.computeIfAbsent(name, s -> new ArrayList<>(1)).add(value);
+        // Headers are case-insensitive, so lowercase them
+        headers.computeIfAbsent(name.toLowerCase(Locale.ROOT), s -> new ArrayList<>(1)).add(value);
     }
 
     public HTTPVersion getVersion() {
@@ -54,17 +56,28 @@ public class HTTPRequest {
         return url;
     }
 
+    /**
+     * Gets the first header for a given key.
+     * @param key The lowercase key of the header
+     * @return The first set value of that header, or null if no such header is present
+     */
     public String getFirstHeader(String key) {
         List<String> strings = headers.get(key);
         if (strings == null) return null;
         return strings.get(0);
     }
 
+    /**
+     * Gets the headers for a given key.
+     * @param key The lowercase key of the header
+     * @return The values of that header, or null if no such header is present
+     */
     public List<String> getHeaders(String key) {
         return headers.get(key);
     }
 
     public InputStream openInputStream() {
+        // TODO validate content-length?
         if (hasOpenedInputStream) throw new IllegalStateException();
         hasOpenedInputStream = true;
         return new SequenceInputStream(new ByteArrayInputStream(restBuffer, bufOffset, bufLength), originalInputStream);
