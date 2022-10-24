@@ -15,13 +15,14 @@ import java.io.InputStream;
 import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
-public class HTTPClientHandler implements Runnable {
+public final class HTTPClientHandler implements Runnable {
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
     private final Socket socket;
     private final ResponseHandler handler;
+    private InputStream inputStream;
     private int read;
+    private int availableBytes;
 
     public HTTPClientHandler(Socket socket, ResponseHandler handler) {
         this.socket = socket;
@@ -31,14 +32,12 @@ public class HTTPClientHandler implements Runnable {
     @Override
     public void run() {
         try {
+            this.inputStream = socket.getInputStream();
             ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
             boolean keepAlive;
-            int useCount = 0;
             do {
-                useCount++;
-                System.out.println("Existing connection used for the " + useCount + "time");
                 try {
-                    keepAlive = handleRequest(this.socket, context);
+                    keepAlive = handleRequest(context);
                 } finally {
                     context.reset();
                 }
@@ -51,16 +50,17 @@ public class HTTPClientHandler implements Runnable {
         }
     }
 
-    private static final PrecomputedHeaderKey ETAG = new PrecomputedHeaderKey("ETag");
-
-    private boolean handleRequest(Socket socket, ReusableClientContext context) throws IOException {
+    private boolean handleRequest(ReusableClientContext context) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
 
         // Read the first bytes into a buffer, hopefully containing the entire header
-        InputStream inputStream = socket.getInputStream();
-        int availableBytes;
-        availableBytes = inputStream.read(headerBuffer);
-        HTTPRequest httpRequest = parseRequestLine(context, availableBytes);
+        availableBytes = 0;
+        readMoreBytes(headerBuffer);
+        if (availableBytes < 0) {
+            // Stream is EOF.
+            return false;
+        }
+        HTTPRequest httpRequest = parseRequestLine(context);
         if (httpRequest == null) {
             ResponseTokenImpl.clearTracking(true);
             return false; // An error occurred while parsing the status line. This means also an error was already returned
@@ -75,7 +75,7 @@ public class HTTPClientHandler implements Runnable {
             ResponseTokenImpl.validate(token);
             return false;
         }
-        boolean success = parseHeaders(context, availableBytes, httpRequest);
+        boolean success = parseHeaders(context, httpRequest);
         if (!success) {
             ResponseTokenImpl.clearTracking(true);
             return false; // Should have already sent a response
@@ -102,14 +102,16 @@ public class HTTPClientHandler implements Runnable {
         }
     }
 
-    private HTTPRequest parseRequestLine(ReusableClientContext context, int availableBytes) throws IOException {
+    private HTTPRequest parseRequestLine(ReusableClientContext context) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
         // Parse the request line according to https://www.rfc-editor.org/rfc/rfc9112#name-request-line
 
         // We do this check so that Method.findMatchingMethod never reads stale data
-        if (availableBytes < InternalConstants.MINIMUM_HEADER_LENGTH_BYTES) {
-            newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
-            return null;
+        while (availableBytes < InternalConstants.MINIMUM_HEADER_LENGTH_BYTES) {
+            if (readMoreBytes(headerBuffer) < 0) {
+                newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
+                return null;
+            }
         }
         // Range checked by above case
         Method method = Method.findMatchingMethod(headerBuffer);
@@ -119,7 +121,7 @@ public class HTTPClientHandler implements Runnable {
         }
 
         read = method.readLength;
-        int pathEnd = HeaderParsingHelper.findRequestLineSplit(headerBuffer, read, Math.min(availableBytes, read + InternalConstants.MAX_REQUEST_TARGET_LENGTH));
+        int pathEnd = HeaderParsingHelper.findRequestLineSplit(headerBuffer, this);
         if (pathEnd < 0) {
             HeaderParsingHelper.handleError(newTempWriter(context), true, pathEnd);
         }
@@ -130,9 +132,11 @@ public class HTTPClientHandler implements Runnable {
 
         // Now comes the http version information
         // According to rfc9012, this part consists of exactly 8 bytes plus two bytes that must follow to end the status line
-        if ((read + 10) > availableBytes) {
-            newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
-            return null;
+        while ((read + 10) > availableBytes) {
+            if (readMoreBytes(headerBuffer) < 0) {
+                newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
+                return null;
+            }
         }
         // The next ten bytes can be read, examine the HTTP version now
         HTTPVersion matchingVersion = HTTPVersion.findMatchingVersion(headerBuffer, read);
@@ -146,6 +150,16 @@ public class HTTPClientHandler implements Runnable {
         return new HTTPRequest(method, path, matchingVersion);
     }
 
+    public int readMoreBytes(byte[] target) throws IOException {
+        if (target.length == availableBytes) return -1;
+        int read = inputStream.read(target, availableBytes, target.length - availableBytes);
+        if (read == -1)
+            availableBytes = -1; // Cant read more bytes, but more were required. This is an invalid state, so set available bytes to -1
+        else
+            availableBytes += read;
+        return availableBytes;
+    }
+
     /**
      * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
      * @param context The context to use
@@ -156,10 +170,10 @@ public class HTTPClientHandler implements Runnable {
         return new ResponseWriter(this.socket.getOutputStream(), context, HTTPVersion.HTTP_1_0);
     }
 
-    private boolean parseHeaders(ReusableClientContext context, int availableBytes, HTTPRequest requestToBuild) throws IOException {
+    private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
         while (true) {
-            int nameEnd = HeaderParsingHelper.findHeaderSplit(headerBuffer, read, availableBytes);
+            int nameEnd = HeaderParsingHelper.findHeaderSplit(headerBuffer, this);
             if (nameEnd < 0) {
                 HeaderParsingHelper.handleError(newWriter(context, requestToBuild.getVersion()), false, nameEnd);
                 return false;
@@ -172,7 +186,7 @@ public class HTTPClientHandler implements Runnable {
             String name = new String(headerBuffer, read, nameLength, StandardCharsets.US_ASCII);
             read = nameEnd + 1;
 
-            int valueEnd = HeaderParsingHelper.findHeaderEnd(headerBuffer, read, availableBytes);
+            int valueEnd = HeaderParsingHelper.findHeaderEnd(headerBuffer, this);
             if (valueEnd < 0) {
                 HeaderParsingHelper.handleError(newWriter(context, requestToBuild.getVersion()), false, valueEnd);
                 return false;
@@ -188,7 +202,12 @@ public class HTTPClientHandler implements Runnable {
             }
             requestToBuild.addHeader(name, value);
             read = valueEnd + 1;
-            if (read + 2 >= availableBytes && headerBuffer[read] == '\r' && headerBuffer[read + 1] == '\n') {
+            while (read + 2 > availableBytes) {
+                if (readMoreBytes(headerBuffer) < 0) {
+                    newWriter(context, requestToBuild.getVersion()).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of header");
+                }
+            }
+            if (headerBuffer[read] == '\r' && headerBuffer[read + 1] == '\n') {
                 // Two CRLF in succession mean that we finished the header data
                 read += 2;
                 return true;
@@ -202,7 +221,15 @@ public class HTTPClientHandler implements Runnable {
      * @return A new response writer for immediate use
      * @throws IOException If an I/O error occurs
      */
-    private ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
+    public ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
         return new ResponseWriter(this.socket.getOutputStream(), context, version);
+    }
+
+    public int getAvailableBytes() {
+        return availableBytes;
+    }
+
+    public int getRead() {
+        return read;
     }
 }

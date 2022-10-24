@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HTTPServer {
     private final int port;
@@ -16,6 +17,7 @@ public class HTTPServer {
     private final ExecutorService executor;
     private final Thread mainSocketListener;
     private final ResponseHandler handler;
+    private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
     /**
      * Creates and starts a new HTTP Server on the specified port
@@ -45,7 +47,7 @@ public class HTTPServer {
         this.mainSocketListener.setUncaughtExceptionHandler((t, e) -> {
             //TODO log
             try {
-                this.shutdown();
+                this.shutdown(false);
             } catch (IOException ex) {
                 // ignore
             }
@@ -62,21 +64,24 @@ public class HTTPServer {
         } catch (IOException e) {
             // TODO log
             try {
-                this.shutdown();
+                this.shutdown(false);
             } catch (IOException ex) {
                 // ignore
             }
         }
     }
 
-    public void shutdown() throws IOException {
+    public void shutdown(boolean awaitDeath) throws IOException {
+        if (this.isShutdown.getAndSet(true)) return;
         //TODO improve
         this.executor.shutdownNow();
         this.mainSocket.close();
-        try {
-            this.mainSocketListener.wait();
-        } catch (InterruptedException e) {
-            // huh, ok then lets not wait
+        if (awaitDeath) {
+            try {
+                this.mainSocketListener.join(10000);
+            } catch (InterruptedException e) {
+                // huh, ok then lets not wait
+            }
         }
     }
 
