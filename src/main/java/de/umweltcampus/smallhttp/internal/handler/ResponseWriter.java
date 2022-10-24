@@ -165,6 +165,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         byte[] dateValue = getServerDate().getBytes(StandardCharsets.US_ASCII);
         byte[] serverHeader = SERVER_HEADER.asciiBytes;
 
+        // Point of no return
         this.startedSendingData = true;
         // Start with status line (https://www.rfc-editor.org/rfc/rfc9112#name-status-line)
         OutputStream stream = this.stream;
@@ -173,19 +174,19 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         // Continue with builtin headers and write them directly
 
         // Date header
-        this.stream.write(dateKey);
-        this.stream.write(':');
-        this.stream.write(dateValue);
-        this.stream.write('\r');
-        this.stream.write('\n');
+        stream.write(dateKey);
+        stream.write(':');
+        stream.write(dateValue);
+        stream.write('\r');
+        stream.write('\n');
 
         // Server header
-        this.stream.write(serverHeader);
+        stream.write(serverHeader);
 
         // Write the other header bytes
-        this.stream.write(this.responseBuffer, 0, responseBufferNextIndex);
+        stream.write(this.responseBuffer, 0, this.responseBufferNextIndex);
         // End with a last CR LF to signal start of body
-        this.stream.write('\r');
-        this.stream.write('\n');
+        stream.write('\r');
+        stream.write('\n');
     }
 }

@@ -44,6 +44,7 @@ public final class HTTPClientHandler implements Runnable {
             } while (keepAlive);
             this.socket.close();
         } catch (Exception e) {
+            ResponseTokenImpl.clearTracking(false);
             e.printStackTrace();
             // TODO handle
             throw new RuntimeException(e);
