@@ -5,8 +5,11 @@ import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
+import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.internal.util.HeaderParsingHelper;
+import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerState;
+import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 
@@ -18,6 +21,8 @@ import java.nio.charset.StandardCharsets;
 
 public final class HTTPClientHandler implements Runnable {
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
+    private static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
+    private final ClientHandlerState state = new ClientHandlerState();
     private final Socket socket;
     private final ResponseHandler handler;
     private InputStream inputStream;
@@ -32,6 +37,7 @@ public final class HTTPClientHandler implements Runnable {
     @Override
     public void run() {
         try {
+            ClientHandlerTracker.registerHandler(this);
             this.inputStream = socket.getInputStream();
             ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
             boolean keepAlive;
@@ -42,23 +48,33 @@ public final class HTTPClientHandler implements Runnable {
                     context.reset();
                 }
             } while (keepAlive);
-            this.socket.close();
         } catch (Exception e) {
             ResponseTokenImpl.clearTracking(false);
             e.printStackTrace();
             // TODO handle
             throw new RuntimeException(e);
+        } finally {
+            try {
+                this.socket.close();
+            } catch (IOException e) {
+                // ignore. Client might have already closed the connection
+            }
+            ClientHandlerTracker.deregisterHandler(this);
         }
     }
 
     private boolean handleRequest(ReusableClientContext context) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
 
-        // Read the first bytes into a buffer, hopefully containing the entire header
         availableBytes = 0;
+        // Read the first bytes
         readMoreBytes(headerBuffer);
         if (availableBytes < 0) {
             // Stream is EOF.
+            return false;
+        }
+        if (!state.startReadingRequest()) {
+            // We are in shutdown - Don't send any response and signal not to keep alive
             return false;
         }
         HTTPRequest httpRequest = parseRequestLine(context);
@@ -72,6 +88,7 @@ public final class HTTPClientHandler implements Runnable {
             // We send a 501 response to indicate this (see https://www.rfc-editor.org/rfc/rfc9110#section-9)
             ResponseToken token = newWriter(context, httpRequest.getVersion())
                     .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
                     .writeBodyAndFlush("Method " + httpRequest.getMethod() + " is not implemented");
             ResponseTokenImpl.validate(token);
             return false;
@@ -81,6 +98,16 @@ public final class HTTPClientHandler implements Runnable {
             ResponseTokenImpl.clearTracking(true);
             return false; // Should have already sent a response
         }
+
+        if (!state.startHandlingRequest()) {
+            ResponseToken token = newWriter(context, httpRequest.getVersion())
+                    .respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Server closed");
+            ResponseTokenImpl.validate(token);
+            return false;
+        }
+
         httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
 
         try {
@@ -91,6 +118,11 @@ public final class HTTPClientHandler implements Runnable {
             // TODO handle properly
             throw new RuntimeException(e);
         }
+
+        if (!state.startAwaitingNextRequest()) {
+            return false;
+        }
+
         // We finished the request. Now we need to check if we should persist the current connection
         // See https://www.rfc-editor.org/rfc/rfc9112#section-9.3 for this
         String connection = httpRequest.getFirstHeader("connection");
@@ -110,14 +142,20 @@ public final class HTTPClientHandler implements Runnable {
         // We do this check so that Method.findMatchingMethod never reads stale data
         while (availableBytes < InternalConstants.MINIMUM_HEADER_LENGTH_BYTES) {
             if (readMoreBytes(headerBuffer) < 0) {
-                newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
+                newTempWriter(context)
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Premature end of request line");
                 return null;
             }
         }
         // Range checked by above case
         Method method = Method.findMatchingMethod(headerBuffer);
         if (method == null) {
-            newTempWriter(context).respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN).writeBodyAndFlush("Unknown method");
+            newTempWriter(context)
+                    .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Unknown method");
             return null;
         }
 
@@ -125,6 +163,7 @@ public final class HTTPClientHandler implements Runnable {
         int pathEnd = HeaderParsingHelper.findRequestLineSplit(headerBuffer, this);
         if (pathEnd < 0) {
             HeaderParsingHelper.handleError(newTempWriter(context), true, pathEnd);
+            return null;
         }
 
         String path = URLDecoder.decode(new String(headerBuffer, read, pathEnd - read, StandardCharsets.US_ASCII), StandardCharsets.UTF_8);
@@ -135,7 +174,10 @@ public final class HTTPClientHandler implements Runnable {
         // According to rfc9012, this part consists of exactly 8 bytes plus two bytes that must follow to end the status line
         while ((read + 10) > availableBytes) {
             if (readMoreBytes(headerBuffer) < 0) {
-                newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of request line");
+                newTempWriter(context)
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Premature end of request line");
                 return null;
             }
         }
@@ -144,7 +186,10 @@ public final class HTTPClientHandler implements Runnable {
         if (matchingVersion == null) {
             // In theory, we should respond with 505 (see https://www.rfc-editor.org/rfc/rfc9110#name-505-http-version-not-suppor)
             // but as http/1.0 and http/1.1 are the only http/1 versions, and http/2 works completely different and would thous not even reach here, we can ignore this
-            newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Invalid HTTP version");
+            newTempWriter(context)
+                    .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Invalid HTTP version");
             return null;
         }
         read += 10;
@@ -171,6 +216,16 @@ public final class HTTPClientHandler implements Runnable {
         return new ResponseWriter(this.socket.getOutputStream(), context, HTTPVersion.HTTP_1_0);
     }
 
+    /**
+     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
+     * @param context The context to use
+     * @return A new response writer for immediate use
+     * @throws IOException If an I/O error occurs
+     */
+    public ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
+        return new ResponseWriter(this.socket.getOutputStream(), context, version);
+    }
+
     private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
         while (true) {
@@ -181,7 +236,10 @@ public final class HTTPClientHandler implements Runnable {
             }
             int nameLength = nameEnd - read;
             if (nameLength == 0) {
-                newWriter(context, requestToBuild.getVersion()).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Request contains invalid header key");
+                newWriter(context, requestToBuild.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Request contains invalid header key");
                 return false;
             }
             String name = new String(headerBuffer, read, nameLength, StandardCharsets.US_ASCII);
@@ -205,7 +263,10 @@ public final class HTTPClientHandler implements Runnable {
             read = valueEnd + 1;
             while (read + 2 > availableBytes) {
                 if (readMoreBytes(headerBuffer) < 0) {
-                    newWriter(context, requestToBuild.getVersion()).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Premature end of header");
+                    newWriter(context, requestToBuild.getVersion())
+                            .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                            .addHeader(CONNECTION_CLOSE_HEADER)
+                            .writeBodyAndFlush("Premature end of header");
                 }
             }
             if (headerBuffer[read] == '\r' && headerBuffer[read + 1] == '\n') {
@@ -216,21 +277,18 @@ public final class HTTPClientHandler implements Runnable {
         }
     }
 
-    /**
-     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
-     * @param context The context to use
-     * @return A new response writer for immediate use
-     * @throws IOException If an I/O error occurs
-     */
-    public ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
-        return new ResponseWriter(this.socket.getOutputStream(), context, version);
-    }
-
     public int getAvailableBytes() {
         return availableBytes;
     }
 
     public int getRead() {
         return read;
+    }
+
+    public void shutdown() throws IOException {
+        boolean closeSocket = this.state.startShutdown();
+        if (closeSocket) {
+            this.socket.close();
+        }
     }
 }

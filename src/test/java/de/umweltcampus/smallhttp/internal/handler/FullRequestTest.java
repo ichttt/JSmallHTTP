@@ -15,6 +15,7 @@ import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class FullRequestTest {
     private static HTTPServer server;
@@ -33,17 +34,17 @@ public class FullRequestTest {
         server.shutdown(true);
     }
 
-    private static final String TO_SEND = "GET / HTTP/1.1\r\nConnection: close\r\nUser-Agent: Test\r\nHost:nocoffee.tech\r\n\r\n";
+    private static final String TO_SEND_CLOSE = "GET / HTTP/1.1\r\nConnection: close\r\nUser-Agent: Test\r\nHost:nocoffee.tech\r\n\r\n";
     private static final String TO_SEND_KEEP_ALIVE = "POST / HTTP/1.1\r\nUser-Agent: Test\r\nHost:nocoffee.tech\r\n\r\n";
 
     @Test
     public void sendHttpRequestInDifferentChunks() throws Exception {
         Assertions.assertTimeoutPreemptively(Duration.of(30, ChronoUnit.SECONDS), () -> {
-                    for (int chunkSize = 1; chunkSize < TO_SEND.length() - 1; chunkSize++) {
+                    for (int chunkSize = 1; chunkSize < TO_SEND_CLOSE.length() - 1; chunkSize++) {
                         Socket socket = new Socket("localhost", 6549);
-                        socket.setSoTimeout(50);
-                        for (int i = 0; i < TO_SEND.length(); i += chunkSize) {
-                            socket.getOutputStream().write(TO_SEND.substring(i, Math.min(i + chunkSize, TO_SEND.length())).getBytes(StandardCharsets.US_ASCII));
+                        socket.setSoTimeout(200);
+                        for (int i = 0; i < TO_SEND_CLOSE.length(); i += chunkSize) {
+                            socket.getOutputStream().write(TO_SEND_CLOSE.substring(i, Math.min(i + chunkSize, TO_SEND_CLOSE.length())).getBytes(StandardCharsets.US_ASCII));
                             socket.getOutputStream().flush();
                             Thread.sleep((int) (Math.random() * 25));
                         }
@@ -61,7 +62,7 @@ public class FullRequestTest {
     public void sendHttpRequestInDifferentChunksWithKeepalive() throws Exception {
         Assertions.assertTimeoutPreemptively(Duration.of(30, ChronoUnit.SECONDS), () -> {
             try (Socket socket = new Socket("localhost", 6549)) {
-                socket.setSoTimeout(50);
+                socket.setSoTimeout(200);
                 for (int chunkSize = 1; chunkSize < TO_SEND_KEEP_ALIVE.length() - 1; chunkSize++) {
                     for (int i = 0; i < TO_SEND_KEEP_ALIVE.length(); i += chunkSize) {
                         socket.getOutputStream().write(TO_SEND_KEEP_ALIVE.substring(i, Math.min(i + chunkSize, TO_SEND_KEEP_ALIVE.length())).getBytes(StandardCharsets.US_ASCII));
@@ -87,5 +88,43 @@ public class FullRequestTest {
                 }
             }
         });
+    }
+
+    @Test
+    public void testShutdownDuringRead() throws Exception {
+        HTTPServer secondaryServer = new HTTPServer(8342, (request, responseWriter) -> {
+            throw new RuntimeException("Should not get here - request should get cancelled!");
+        });
+        Thread serverShutdownThread = new Thread(() -> {
+            try {
+                secondaryServer.shutdown(true);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        AtomicReference<Throwable> reference = new AtomicReference<>();
+        serverShutdownThread.setUncaughtExceptionHandler((t, e) -> reference.set(e));
+        Assertions.assertTimeoutPreemptively(Duration.of(10, ChronoUnit.SECONDS), () -> {
+            int chunkSize = 10;
+            Socket socket = new Socket("localhost", 8342);
+            socket.setSoTimeout(200);
+            for (int i = 0; i < TO_SEND_CLOSE.length(); i += chunkSize) {
+                if (i == chunkSize) {
+                    serverShutdownThread.start();
+                }
+                socket.getOutputStream().write(TO_SEND_CLOSE.substring(i, Math.min(i + chunkSize, TO_SEND_CLOSE.length())).getBytes(StandardCharsets.US_ASCII));
+                socket.getOutputStream().flush();
+                Thread.sleep(200);
+            }
+            socket.shutdownOutput();
+            byte[] bytes = socket.getInputStream().readAllBytes();
+            String asString = new String(bytes, StandardCharsets.US_ASCII);
+            Assertions.assertEquals("HTTP/1.1 500 Internal Server Error", asString.split("\r")[0]);
+            Assertions.assertTrue(asString.endsWith("Server closed"), "String ends with " + asString.substring(asString.length() - 25));
+            socket.close();
+        });
+        Assertions.assertTrue(secondaryServer.isShutdown());
+        Assertions.assertFalse(serverShutdownThread.isAlive());
+        Assertions.assertNull(reference.get());
     }
 }

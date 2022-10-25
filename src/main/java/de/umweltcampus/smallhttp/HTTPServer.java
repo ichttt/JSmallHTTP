@@ -1,11 +1,13 @@
 package de.umweltcampus.smallhttp;
 
 import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
+import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,9 +27,9 @@ public class HTTPServer {
      * @throws IOException If the startup of the server failed
      */
     public HTTPServer(int port, ResponseHandler handler) throws IOException {
-        // Use 4 times the available hardware processors as max threads, as not all threads may run at once
-        // (some may hang during read operations)
-        this(port, Runtime.getRuntime().availableProcessors() * 4, handler);
+        // Use 8 times the available hardware processors as max threads, as not all threads may run at once
+        // (some may hang during read operations or are keep alive connections)
+        this(port, Math.min(256, Runtime.getRuntime().availableProcessors() * 8), handler);
     }
 
     /**
@@ -59,7 +61,14 @@ public class HTTPServer {
         try {
             while (!mainSocket.isClosed()) {
                 Socket acceptedSocket = mainSocket.accept();
-                this.executor.submit(new HTTPClientHandler(acceptedSocket, this.handler));
+                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.handler);
+                try {
+                    this.executor.submit(httpClientHandler);
+                } catch (RejectedExecutionException e) {
+                    try {
+                        acceptedSocket.close(); // TODO handle better
+                    } catch (IOException ignored) {}
+                }
             }
         } catch (IOException e) {
             // TODO log
@@ -72,17 +81,36 @@ public class HTTPServer {
     }
 
     public void shutdown(boolean awaitDeath) throws IOException {
+        // Check if a shutdown sequence is already in progress
         if (this.isShutdown.getAndSet(true)) return;
-        //TODO improve
-        this.executor.shutdownNow();
+        ClientHandlerTracker.notifyShutdown();
+
         this.mainSocket.close();
+        this.executor.shutdown();
         if (awaitDeath) {
             try {
-                this.mainSocketListener.join(10000);
+                // The main thread should be finished pretty quickly, as it just accepts new requests
+                this.mainSocketListener.join(1000);
             } catch (InterruptedException e) {
                 // huh, ok then lets not wait
             }
+            if (this.mainSocketListener.isAlive()) {
+                throw new IOException("Failed to shutdown main socket listener!");
+            }
+            boolean terminated = false;
+            try {
+                terminated = this.executor.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                // huh, ok then lets not wait
+            }
+            if (!terminated) {
+                throw new IOException("Failed to shutdown socket handlers!");
+            }
         }
+    }
+
+    public boolean isShutdown() {
+        return isShutdown.get();
     }
 
     public int getPort() {
