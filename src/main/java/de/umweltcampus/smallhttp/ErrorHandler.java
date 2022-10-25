@@ -38,6 +38,7 @@ public interface ErrorHandler {
      * @param handler The handler that was handling the socket
      * @param socket The socket that was being handled
      * @param e The exception thrown
+     * @return True if the handler is allowed to keep the connection alive, False otherwise. If unsure, return false.
      */
     boolean onResponseHandlerException(HTTPClientHandler handler, Socket socket, Exception e);
 }
