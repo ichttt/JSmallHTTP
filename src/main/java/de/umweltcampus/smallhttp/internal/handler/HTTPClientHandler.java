@@ -1,5 +1,6 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
+import de.umweltcampus.smallhttp.ErrorHandler;
 import de.umweltcampus.smallhttp.ResponseHandler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
@@ -24,13 +25,15 @@ public final class HTTPClientHandler implements Runnable {
     private static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
     private final ClientHandlerState state = new ClientHandlerState();
     private final Socket socket;
+    private final ErrorHandler errorHandler;
     private final ResponseHandler handler;
     private InputStream inputStream;
     private int read;
     private int availableBytes;
 
-    public HTTPClientHandler(Socket socket, ResponseHandler handler) {
+    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, ResponseHandler handler) {
         this.socket = socket;
+        this.errorHandler = errorHandler;
         this.handler = handler;
     }
 
@@ -50,9 +53,7 @@ public final class HTTPClientHandler implements Runnable {
             } while (keepAlive);
         } catch (Exception e) {
             ResponseTokenImpl.clearTracking(false);
-            e.printStackTrace();
-            // TODO handle
-            throw new RuntimeException(e);
+            this.errorHandler.onClientHandlerInternalException(this, socket, e);
         } finally {
             try {
                 this.socket.close();
@@ -115,8 +116,9 @@ public final class HTTPClientHandler implements Runnable {
             if (!ResponseTokenImpl.validate(token))
                 throw new RuntimeException("Invalid token returned from handler!");
         } catch (Exception e) {
-            // TODO handle properly
-            throw new RuntimeException(e);
+            if (!this.errorHandler.onResponseHandlerException(this, socket, e)) {
+                return false;
+            }
         }
 
         if (!state.startAwaitingNextRequest()) {
