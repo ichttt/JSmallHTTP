@@ -1,7 +1,7 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.ErrorHandler;
-import de.umweltcampus.smallhttp.ResponseHandler;
+import de.umweltcampus.smallhttp.RequestHandler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
@@ -26,12 +26,12 @@ public final class HTTPClientHandler implements Runnable {
     private final ClientHandlerState state = new ClientHandlerState();
     private final Socket socket;
     private final ErrorHandler errorHandler;
-    private final ResponseHandler handler;
+    private final RequestHandler handler;
     private InputStream inputStream;
     private int read;
     private int availableBytes;
 
-    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, ResponseHandler handler) {
+    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler) {
         this.socket = socket;
         this.errorHandler = errorHandler;
         this.handler = handler;
@@ -90,7 +90,7 @@ public final class HTTPClientHandler implements Runnable {
             ResponseToken token = newWriter(context, httpRequest.getVersion())
                     .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
                     .addHeader(CONNECTION_CLOSE_HEADER)
-                    .writeBodyAndFlush("Method " + httpRequest.getMethod() + " is not implemented");
+                    .writeBodyAndFlush("Method ", httpRequest.getMethod().toString() ," is not implemented");
             ResponseTokenImpl.validate(token);
             return false;
         }

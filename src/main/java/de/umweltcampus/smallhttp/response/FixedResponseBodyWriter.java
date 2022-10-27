@@ -6,7 +6,7 @@ import java.io.OutputStream;
 /**
  * An interface that allows the application to write body data using a raw output stream or using convenience functions.
  */
-public interface ResponseBodyWriter {
+public interface FixedResponseBodyWriter {
 
     /**
      * Returns the raw underlying output stream. Any data written to this stream might be sent immediately to the client.

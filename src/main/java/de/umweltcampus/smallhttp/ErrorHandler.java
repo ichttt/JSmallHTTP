@@ -34,7 +34,7 @@ public interface ErrorHandler {
     void onClientHandlerInternalException(HTTPClientHandler handler, Socket socket, Exception e);
 
     /**
-     * Called when a {@link ResponseHandler} throws an exception while handling a request
+     * Called when a {@link RequestHandler} throws an exception while handling a request
      * @param handler The handler that was handling the socket
      * @param socket The socket that was being handled
      * @param e The exception thrown

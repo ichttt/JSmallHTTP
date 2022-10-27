@@ -20,7 +20,7 @@ public class HTTPServer {
     private final ExecutorService executor;
     private final Thread mainSocketListener;
     private final ErrorHandler errorHandler;
-    private final ResponseHandler handler;
+    private final RequestHandler handler;
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
 
     /**
@@ -29,7 +29,7 @@ public class HTTPServer {
      * @param handler The handler that processes incoming http requests and responds to them
      * @throws IOException If the startup of the server failed
      */
-    public HTTPServer(int port, ResponseHandler handler) throws IOException {
+    public HTTPServer(int port, RequestHandler handler) throws IOException {
         this(port, DefaultErrorHandler.INSTANCE, handler);
     }
 
@@ -40,7 +40,7 @@ public class HTTPServer {
      * @param handler The handler that processes incoming http requests and responds to them
      * @throws IOException If the startup of the server failed
      */
-    public HTTPServer(int port, ErrorHandler errorHandler, ResponseHandler handler) throws IOException {
+    public HTTPServer(int port, ErrorHandler errorHandler, RequestHandler handler) throws IOException {
         // Use 8 times the available hardware processors as max threads, as not all threads may run at once
         // (some may hang during read operations or are keep alive connections)
         this(port, errorHandler, Math.min(256, Runtime.getRuntime().availableProcessors() * 8), handler);
@@ -53,7 +53,7 @@ public class HTTPServer {
      * @param handler The handler that processes incoming http requests and responds to them
      * @throws IOException If the startup of the server failed
      */
-    public HTTPServer(int port, ErrorHandler errorHandler, int maxThreads, ResponseHandler handler) throws IOException {
+    public HTTPServer(int port, ErrorHandler errorHandler, int maxThreads, RequestHandler handler) throws IOException {
         this.port = port;
         this.errorHandler = errorHandler;
         this.mainSocket = new ServerSocket(port);

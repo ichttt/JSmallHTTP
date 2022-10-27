@@ -5,6 +5,7 @@ import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -54,7 +55,7 @@ public interface ResponseHeaderWriter {
      * @param size The size of the body
      * @return The new body writer
      */
-    ResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException;
+    FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException;
 
     /**
      * Ends writing of the headers and begins to write the body.
@@ -66,28 +67,50 @@ public interface ResponseHeaderWriter {
      * In that case, the connection to the client will be forcibly closed!
      * @return The new body writer
      */
-    ResponseBodyWriter beginBodyWithUnknownSize() throws IOException;
+    ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException;
 
     /**
      * Ends writing of headers and writes a string to the message body and flushes the output to the client.
-     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      * @return The response token that must be returned to the
      */
     default ResponseToken writeBodyAndFlush(String s) throws IOException {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-        ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
+        FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
         responseBodyWriter.getRawOutputStream().write(bytes);
         return responseBodyWriter.finalizeResponse();
     }
 
     /**
+     * Ends writing of headers and writes an array of strings to the message body and flushes the output to the client.
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
+     * This header writer becomes invalid once this is called.
+     * @return The response token that must be returned to the
+     */
+    default ResponseToken writeBodyAndFlush(String... strings) throws IOException {
+        byte[][] arrays = new byte[strings.length][];
+        int length = 0;
+        for (int i = 0; i < strings.length; i++) {
+            byte[] bytes = strings[i].getBytes(StandardCharsets.UTF_8);
+            length += bytes.length;
+            arrays[i] = bytes;
+        }
+        FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(length);
+        OutputStream rawOutputStream = responseBodyWriter.getRawOutputStream();
+        for (byte[] array : arrays) {
+            rawOutputStream.write(array);
+        }
+        return responseBodyWriter.finalizeResponse();
+    }
+
+    /**
      * Ends writing of headers and writes a byte array to the message body and flushes the output to the client.
-     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link ResponseBodyWriter#getRawOutputStream()} and {@link ResponseBodyWriter#finalizeResponse()}
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      */
     default ResponseToken writeBodyAndFlush(byte[] bytes) throws IOException {
-        ResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
+        FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
         responseBodyWriter.getRawOutputStream().write(bytes);
         return responseBodyWriter.finalizeResponse();
     }

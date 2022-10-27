@@ -6,7 +6,7 @@ import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 
-public interface ResponseHandler {
+public interface RequestHandler {
 
     ResponseToken answerRequest(HTTPRequest request, ResponseStartWriter responseWriter) throws IOException;
 }

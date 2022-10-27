@@ -6,10 +6,7 @@ import de.umweltcampus.smallhttp.header.BuiltinHeaders;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.response.ResponseBodyWriter;
-import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
-import de.umweltcampus.smallhttp.response.ResponseStartWriter;
-import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.smallhttp.response.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -19,10 +16,14 @@ import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
-public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, ResponseBodyWriter {
+public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, FixedResponseBodyWriter, ChunkedResponseWriter {
     private static final Calendar CALENDAR = Calendar.getInstance();
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ROOT);
     private static final PrecomputedHeader SERVER_HEADER = new PrecomputedHeader(BuiltinHeaders.SERVER.headerKey, "JSmallHTTP");
+    private static final PrecomputedHeader CHUNKED_ENCODING = new PrecomputedHeader(BuiltinHeaders.TRANSFER_ENCODING.headerKey, "chunked");
+    private static final byte[] EMPTY_ARRAY = new byte[0];
+    private static final byte[] CRLF_BYTES = "\r\n".getBytes(StandardCharsets.US_ASCII);
+
     static {
         DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
@@ -34,6 +35,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private Status status = null;
     private boolean startedSendingData = false;
     private boolean completed = false;
+    private boolean chunked = false;
 
     public ResponseWriter(OutputStream stream, ReusableClientContext context, HTTPVersion requestVersion) {
         this.stream = stream;
@@ -104,7 +106,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public ResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException {
+    public FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException {
         if (size < 0) throw new IllegalArgumentException();
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
         this.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "");
@@ -114,9 +116,9 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public ResponseBodyWriter beginBodyWithUnknownSize() throws IOException {
+    public ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException {
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
-        if (true) throw new RuntimeException("Chunked transfer is not implemented (yet)!");
+        this.chunked = true;
 
         sendHeader();
         return this;
@@ -134,9 +136,27 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
     @Override
     public OutputStream getRawOutputStream() {
-        if (!this.startedSendingData || completed) throw new IllegalStateException();
+        if (!this.startedSendingData || completed || chunked) throw new IllegalStateException();
 
         return this.stream;
+    }
+
+    @Override
+    public void writeChunk(byte[] data) throws IOException {
+        this.writeChunk(data, 0, data.length);
+    }
+
+    @Override
+    public void writeChunk(byte[] data, int offset, int length) throws IOException {
+        if (!this.startedSendingData || completed || !chunked) throw new IllegalStateException();
+        assert data.length - offset >= length;
+
+        // See https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
+        byte[] lengthIndicator = Integer.toHexString(length).getBytes(StandardCharsets.US_ASCII);
+        this.stream.write(lengthIndicator);
+        this.stream.write(CRLF_BYTES);
+        this.stream.write(data, offset, length);
+        this.stream.write(CRLF_BYTES);
     }
 
     @Override
@@ -144,6 +164,9 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         if (completed) throw new IllegalStateException();
 
         if (!startedSendingData) sendHeader();
+        if (chunked) {
+            this.stream.write("0\r\n".getBytes(StandardCharsets.US_ASCII)); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
+        }
         this.stream.flush();
         this.completed = true;
         return ResponseTokenImpl.get();
@@ -164,6 +187,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         byte[] dateKey = BuiltinHeaders.DATE.headerKey.asciiBytes;
         byte[] dateValue = getServerDate().getBytes(StandardCharsets.US_ASCII);
         byte[] serverHeader = SERVER_HEADER.asciiBytes;
+        byte[] transferEncoding = this.chunked ? CHUNKED_ENCODING.asciiBytes : EMPTY_ARRAY;
 
         // Point of no return
         this.startedSendingData = true;
@@ -182,6 +206,9 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
         // Server header
         stream.write(serverHeader);
+
+        // Transfer encoding header
+        stream.write(transferEncoding);
 
         // Write the other header bytes
         stream.write(this.responseBuffer, 0, this.responseBufferNextIndex);
