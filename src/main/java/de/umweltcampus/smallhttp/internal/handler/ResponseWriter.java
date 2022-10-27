@@ -23,6 +23,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private static final PrecomputedHeader CHUNKED_ENCODING = new PrecomputedHeader(BuiltinHeaders.TRANSFER_ENCODING.headerKey, "chunked");
     private static final byte[] EMPTY_ARRAY = new byte[0];
     private static final byte[] CRLF_BYTES = "\r\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] TRANSFER_ENCODING_END = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
 
     static {
         DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -165,7 +166,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
         if (!startedSendingData) sendHeader();
         if (chunked) {
-            this.stream.write("0\r\n".getBytes(StandardCharsets.US_ASCII)); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
+            this.stream.write(TRANSFER_ENCODING_END); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
         }
         this.stream.flush();
         this.completed = true;
