@@ -90,7 +90,7 @@ public final class HTTPClientHandler implements Runnable {
             ResponseToken token = newWriter(context, httpRequest.getVersion())
                     .respond(Status.NOT_IMPLEMENTED, CommonContentTypes.PLAIN)
                     .addHeader(CONNECTION_CLOSE_HEADER)
-                    .writeBodyAndFlush("Method ", httpRequest.getMethod().toString() ," is not implemented");
+                    .writeBodyAndFlush("Method ", httpRequest.getMethod().toString(), " is not implemented");
             ResponseTokenImpl.validate(token);
             return false;
         }
@@ -168,8 +168,16 @@ public final class HTTPClientHandler implements Runnable {
             return null;
         }
 
-        String path = URLDecoder.decode(new String(headerBuffer, read, pathEnd - read, StandardCharsets.US_ASCII), StandardCharsets.UTF_8);
-        // TODO check URL type and handle it in-place?
+        String path;
+        if (pathEnd == read) {
+            newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Invalid URI!");
+            return null;
+        }
+
+        URLParser parser = new URLParser(headerBuffer, read, pathEnd);
+
         read = pathEnd + 1; // plus one for the space
 
         // Now comes the http version information
@@ -195,7 +203,7 @@ public final class HTTPClientHandler implements Runnable {
             return null;
         }
         read += 10;
-        return new HTTPRequest(method, path, matchingVersion);
+        return new HTTPRequest(method, parser, matchingVersion);
     }
 
     public int readMoreBytes(byte[] target) throws IOException {

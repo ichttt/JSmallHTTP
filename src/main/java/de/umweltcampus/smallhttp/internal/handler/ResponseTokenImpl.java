@@ -8,7 +8,7 @@ public final class ResponseTokenImpl implements ResponseToken {
      * This may help to find bugs where two responses are filled for one request.
      */
     private static final boolean TRACK_RESPONSES = Boolean.getBoolean("smallhttp.trackResponses");
-    private static final ThreadLocal<ResponseToken> TOKEN_TRACKER = new ThreadLocal<>();
+    private static final ThreadLocal<ResponseToken> TOKEN_TRACKER = TRACK_RESPONSES ? new ThreadLocal<>() : null;
     private static final ResponseTokenImpl INSTANCE = new ResponseTokenImpl();
 
     private ResponseTokenImpl() {}

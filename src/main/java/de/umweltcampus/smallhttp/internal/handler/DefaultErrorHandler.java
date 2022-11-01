@@ -5,6 +5,7 @@ import de.umweltcampus.smallhttp.HTTPServer;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.concurrent.RejectedExecutionException;
 
 public class DefaultErrorHandler implements ErrorHandler {
@@ -32,6 +33,7 @@ public class DefaultErrorHandler implements ErrorHandler {
 
     @Override
     public void onClientHandlerInternalException(HTTPClientHandler handler, Socket socket, Exception e) {
+        if (e instanceof SocketException) return; // ignore
         e.printStackTrace();
     }
 

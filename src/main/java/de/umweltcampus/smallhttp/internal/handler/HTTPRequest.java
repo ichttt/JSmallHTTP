@@ -14,7 +14,8 @@ import java.util.Map;
 
 public class HTTPRequest {
     private final Method method;
-    private final String url;
+    private final URLParser urlParser;
+    private final String path;
     private final HTTPVersion version;
     private final Map<String, List<String>> headers;
     private boolean hasOpenedInputStream = false;
@@ -23,9 +24,10 @@ public class HTTPRequest {
     private int bufLength;
     private InputStream originalInputStream;
 
-    public HTTPRequest(Method method, String url, HTTPVersion version) {
+    public HTTPRequest(Method method, URLParser parser, HTTPVersion version) {
         this.method = method;
-        this.url = url;
+        this.urlParser = parser;
+        this.path = parser.parseRequestTarget();
         this.version = version;
         this.headers = new HashMap<>();
     }
@@ -52,8 +54,16 @@ public class HTTPRequest {
         return method;
     }
 
-    public String getUrl() {
-        return url;
+    public String getPath() {
+        return path;
+    }
+
+    /**
+     * Gets the URL query parameters, parsing them on the first call to this method
+     * @return A map with the key-value pairs of the parameters. The order of items is preserved
+     */
+    public Map<String, String> getQueryParameters() {
+        return urlParser.parseOrGetQuery();
     }
 
     /**
