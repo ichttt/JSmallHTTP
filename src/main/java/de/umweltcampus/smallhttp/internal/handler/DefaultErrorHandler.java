@@ -24,6 +24,16 @@ public class DefaultErrorHandler implements ErrorHandler {
     }
 
     @Override
+    public void onWatchdogInternalException(HTTPServer server, Throwable exception) {
+        exception.printStackTrace();
+        try {
+            server.shutdown(false);
+        } catch (IOException ex) {
+            // ignore
+        }
+    }
+
+    @Override
     public void onNoAvailableThreadForConnection(HTTPServer server, Socket socket, RejectedExecutionException exception) {
         exception.printStackTrace();
         try {
@@ -41,5 +51,10 @@ public class DefaultErrorHandler implements ErrorHandler {
     public boolean onResponseHandlerException(HTTPClientHandler handler, Socket socket, Exception e) {
         e.printStackTrace();
         return false;
+    }
+
+    @Override
+    public void onExternalTimeoutCloseFailed(HTTPClientHandler handler, Socket socket, Exception e) {
+        e.printStackTrace();
     }
 }

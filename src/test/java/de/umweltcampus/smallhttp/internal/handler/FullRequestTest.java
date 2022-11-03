@@ -1,6 +1,8 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.HTTPServer;
+import de.umweltcampus.smallhttp.HTTPServerBuilder;
+import de.umweltcampus.smallhttp.RequestHandler;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
@@ -22,11 +24,12 @@ public class FullRequestTest {
 
     @BeforeAll
     public static void setup() throws IOException {
-        server = new HTTPServer(6549, (request, responseWriter) -> {
+        RequestHandler handler = (request, responseWriter) -> {
             if (request.getMethod() == Method.GET) return responseWriter.respond(Status.OK, CommonContentTypes.PLAIN).writeBodyAndFlush("Passt");
             if (request.getMethod() == Method.POST) return responseWriter.respond(Status.OK, CommonContentTypes.PLAIN).writeBodyAndFlush("Super");
             return responseWriter.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Ja ne kein plan");
-        });
+        };
+        server = HTTPServerBuilder.create(6549, handler).build();
     }
 
     @AfterAll
@@ -92,9 +95,9 @@ public class FullRequestTest {
 
     @Test
     public void testShutdownDuringRead() throws Exception {
-        HTTPServer secondaryServer = new HTTPServer(8342, (request, responseWriter) -> {
+        HTTPServer secondaryServer = HTTPServerBuilder.create(8342, (request, responseWriter) -> {
             throw new RuntimeException("Should not get here - request should get cancelled!");
-        });
+        }).build();
         Thread serverShutdownThread = new Thread(() -> {
             try {
                 secondaryServer.shutdown(true);

@@ -2,7 +2,6 @@ package de.umweltcampus.smallhttp;
 
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
-import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.response.ChunkedResponseWriter;
 
 import java.io.IOException;
@@ -13,7 +12,7 @@ import java.util.Map;
 public class Test {
 
     public static void main(String[] args) throws IOException {
-        HTTPServer httpServer = new HTTPServer(8080, (request, responseWriter) -> {
+        RequestHandler handler = (request, responseWriter) -> {
             if (request.getPath().equals("/data.html")) {
                 Map<String, String> queryParameters = request.getQueryParameters();
                 String data = queryParameters.get("data");
@@ -31,6 +30,7 @@ public class Test {
                 return chunkedResponseWriter.finalizeResponse();
             }
             return responseWriter.respond(Status.OK, CommonContentTypes.HTML).writeBodyAndFlush("<html><body><img src=\"/test\"/></body></html>");
-        });
+        };
+        HTTPServer httpServer = HTTPServerBuilder.create(8080, handler).setRequestHeaderReadTimeout(10000).build();
     }
 }

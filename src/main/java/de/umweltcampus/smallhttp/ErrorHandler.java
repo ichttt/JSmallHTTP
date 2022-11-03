@@ -18,6 +18,13 @@ public interface ErrorHandler {
     void onListenerInternalException(HTTPServer server, Throwable exception);
 
     /**
+     * Called when the watchdog thread crashes.
+     * @param server The server that crashed
+     * @param exception The exception thrown
+     */
+    void onWatchdogInternalException(HTTPServer server, Throwable exception);
+
+    /**
      * Called when the main listener accepts a new connection, but no thread is available to distribute the work to
      * @param server The server that could not handle the socket
      * @param socket The socket that was just accepted and cannot be assigned to a thread
@@ -41,4 +48,12 @@ public interface ErrorHandler {
      * @return True if the handler is allowed to keep the connection alive, False otherwise. If unsure, return false.
      */
     boolean onResponseHandlerException(HTTPClientHandler handler, Socket socket, Exception e);
+
+    /**
+     * Called when the {@link de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog} wants to terminate a connection because the timeout was exceeded but the operation fails
+     * @param handler The handler that crashed
+     * @param socket The socket that should get shutdown
+     * @param e The exception thrown
+     */
+    void onExternalTimeoutCloseFailed(HTTPClientHandler handler, Socket socket, Exception e);
 }

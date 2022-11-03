@@ -17,7 +17,8 @@ import de.umweltcampus.smallhttp.response.ResponseToken;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
-import java.net.URLDecoder;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 
 public final class HTTPClientHandler implements Runnable {
@@ -27,20 +28,23 @@ public final class HTTPClientHandler implements Runnable {
     private final Socket socket;
     private final ErrorHandler errorHandler;
     private final RequestHandler handler;
+    private final ClientHandlerTracker tracker;
     private InputStream inputStream;
     private int read;
     private int availableBytes;
+    private volatile boolean externalTimeout = false;
 
-    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler) {
+    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker) {
         this.socket = socket;
         this.errorHandler = errorHandler;
         this.handler = handler;
+        this.tracker = tracker;
+        tracker.registerHandler(this);
     }
 
     @Override
     public void run() {
         try {
-            ClientHandlerTracker.registerHandler(this);
             this.inputStream = socket.getInputStream();
             ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
             boolean keepAlive;
@@ -51,16 +55,23 @@ public final class HTTPClientHandler implements Runnable {
                     context.reset();
                 }
             } while (keepAlive);
+        } catch (SocketTimeoutException e) {
+            // Socket timeout just means we cancel all processing of the request - so ignore
+        } catch (SocketException e) {
+            // If this is caused by an external timeout, we don't need to handle this, as the exception is expected
+            if (!externalTimeout) {
+                this.errorHandler.onClientHandlerInternalException(this, socket, e);
+            }
         } catch (Exception e) {
-            ResponseTokenImpl.clearTracking(false);
             this.errorHandler.onClientHandlerInternalException(this, socket, e);
         } finally {
+            ResponseTokenImpl.clearTracking(false);
             try {
                 this.socket.close();
             } catch (IOException e) {
                 // ignore. Client might have already closed the connection
             }
-            ClientHandlerTracker.deregisterHandler(this);
+            tracker.deregisterHandler(this);
         }
     }
 
@@ -299,6 +310,18 @@ public final class HTTPClientHandler implements Runnable {
         boolean closeSocket = this.state.startShutdown();
         if (closeSocket) {
             this.socket.close();
+        }
+    }
+
+    public void checkTimeout(int readTimeout, int handleTimeout) {
+        // This is run from the watchdog thread!
+        if (this.state.isTimedOut(readTimeout, handleTimeout)) {
+            this.externalTimeout = true;
+            try {
+                this.socket.close();
+            } catch (IOException e) {
+                this.errorHandler.onExternalTimeoutCloseFailed(this, this.socket, e);
+            }
         }
     }
 }

@@ -1,76 +1,70 @@
 package de.umweltcampus.smallhttp;
 
-import de.umweltcampus.smallhttp.internal.handler.DefaultErrorHandler;
 import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
+import de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * A server that listens for incoming HTTP requests. Create new instances using {@link HTTPServerBuilder}
+ */
 public class HTTPServer {
     private final int port;
     private final ServerSocket mainSocket;
     private final ExecutorService executor;
     private final Thread mainSocketListener;
+    private final Thread socketWatchdogThread;
     private final ErrorHandler errorHandler;
     private final RequestHandler handler;
+    private final int socketTimeout;
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+    private final ClientHandlerTracker tracker = new ClientHandlerTracker();
 
     /**
-     * Creates and starts a new HTTP Server on the specified port
-     * @param port The port to listen on
-     * @param handler The handler that processes incoming http requests and responds to them
+     * Creates and starts a new HTTP Server with the specified options
+     *
      * @throws IOException If the startup of the server failed
      */
-    public HTTPServer(int port, RequestHandler handler) throws IOException {
-        this(port, DefaultErrorHandler.INSTANCE, handler);
-    }
-
-    /**
-     * Creates and starts a new HTTP Server on the specified port
-     * @param port The port to listen on
-     * @param errorHandler The error handler that handles exceptions
-     * @param handler The handler that processes incoming http requests and responds to them
-     * @throws IOException If the startup of the server failed
-     */
-    public HTTPServer(int port, ErrorHandler errorHandler, RequestHandler handler) throws IOException {
-        // Use 8 times the available hardware processors as max threads, as not all threads may run at once
-        // (some may hang during read operations or are keep alive connections)
-        this(port, errorHandler, Math.min(256, Runtime.getRuntime().availableProcessors() * 8), handler);
-    }
-
-    /**
-     * Creates and starts a new HTTP Server on the specified port
-     * @param port The port to listen on
-     * @param maxThreads The maximum number of threads to handle requests on
-     * @param handler The handler that processes incoming http requests and responds to them
-     * @throws IOException If the startup of the server failed
-     */
-    public HTTPServer(int port, ErrorHandler errorHandler, int maxThreads, RequestHandler handler) throws IOException {
-        this.port = port;
-        this.errorHandler = errorHandler;
+    HTTPServer(HTTPServerBuilder builder) throws IOException {
+        this.port = builder.getPort();
+        this.errorHandler = builder.getErrorHandler();
         this.mainSocket = new ServerSocket(port);
-        this.executor = new ThreadPoolExecutor(0, maxThreads, 5, TimeUnit.MINUTES, new SynchronousQueue<>());
-        this.handler = handler;
+        this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>());
+        this.handler = builder.getHandler();
+        this.socketTimeout = builder.getSocketTimeoutMillis();
 
         this.mainSocketListener = new Thread(this::listen);
         this.mainSocketListener.setName("HTTPServer port " + port + " listener");
         this.mainSocketListener.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onListenerInternalException(this, e));
         this.mainSocketListener.start();
+
+        int readTimeout = builder.getRequestHeaderReadTimeoutMillis();
+        int handlingTimeout = builder.getRequestHandlingTimeoutMillis();
+        if (readTimeout != -1 || handlingTimeout != -1) {
+            this.socketWatchdogThread = new Thread(new SocketWatchdog(readTimeout, handlingTimeout, this.tracker, this));
+            this.socketWatchdogThread.setPriority(Thread.MIN_PRIORITY);
+            this.socketWatchdogThread.setDaemon(true);
+            this.socketWatchdogThread.setName("HTTPServer port " + port + " watchdog");
+            this.socketWatchdogThread.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onWatchdogInternalException(this, e));
+            this.socketWatchdogThread.start();
+        } else {
+            this.socketWatchdogThread = null;
+        }
     }
 
     private void listen() {
         try {
             while (!mainSocket.isClosed()) {
                 Socket acceptedSocket = mainSocket.accept();
-                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler);
+                if (socketTimeout != -1) {
+                    acceptedSocket.setSoTimeout(socketTimeout);
+                }
+                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler, this.tracker);
                 try {
                     this.executor.submit(httpClientHandler);
                 } catch (RejectedExecutionException e) {
@@ -85,7 +79,8 @@ public class HTTPServer {
     public void shutdown(boolean awaitDeath) throws IOException {
         // Check if a shutdown sequence is already in progress
         if (this.isShutdown.getAndSet(true)) return;
-        ClientHandlerTracker.notifyShutdown();
+        this.tracker.notifyShutdown();
+        if (this.socketWatchdogThread != null) this.socketWatchdogThread.interrupt();
 
         this.mainSocket.close();
         this.executor.shutdown();
