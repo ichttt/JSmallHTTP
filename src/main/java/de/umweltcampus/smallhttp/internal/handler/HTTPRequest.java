@@ -3,9 +3,7 @@ package de.umweltcampus.smallhttp.internal.handler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.SequenceInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,11 +84,18 @@ public class HTTPRequest {
         return headers.get(key);
     }
 
-    public InputStream openInputStream() {
-        // TODO validate content-length?
+    public InputStream getInputStream() {
         if (hasOpenedInputStream) throw new IllegalStateException();
+        String contentLength = getFirstHeader("content-length");
+        if (contentLength == null) return null;
+        int contentLengthInt;
+        try {
+            contentLengthInt = Integer.parseInt(contentLength.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
         hasOpenedInputStream = true;
-        return new SequenceInputStream(new ByteArrayInputStream(restBuffer, bufOffset, bufLength), originalInputStream);
+        return new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLengthInt);
     }
 
     boolean isAsteriskRequest() {

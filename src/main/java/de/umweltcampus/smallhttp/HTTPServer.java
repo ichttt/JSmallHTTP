@@ -9,6 +9,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A server that listens for incoming HTTP requests. Create new instances using {@link HTTPServerBuilder}
@@ -26,6 +27,7 @@ public class HTTPServer {
     private final boolean builtinServerWideOptions;
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final ClientHandlerTracker tracker = new ClientHandlerTracker();
+    private final AtomicInteger threadNumber = new AtomicInteger(1);
 
     /**
      * Creates and starts a new HTTP Server with the specified options
@@ -36,7 +38,7 @@ public class HTTPServer {
         this.port = builder.getPort();
         this.errorHandler = builder.getErrorHandler();
         this.mainSocket = new ServerSocket(port);
-        this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>());
+        this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> new Thread(r, "HTTPServer port " + port + " client handler " + threadNumber.getAndIncrement()));
         this.handler = builder.getHandler();
         this.socketTimeout = builder.getSocketTimeoutMillis();
         this.allowTraceConnect = builder.isAllowTraceConnect();
