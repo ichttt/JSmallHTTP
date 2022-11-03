@@ -5,7 +5,6 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -16,6 +15,7 @@ public class URLParser {
     private int queryIndex;
     private URL url;
     private Map<String, String> map;
+    private boolean parsedTarget = false;
 
     public URLParser(byte[] buf, int start, int end) {
         this.buf = buf;
@@ -29,15 +29,25 @@ public class URLParser {
             // https://www.rfc-editor.org/rfc/rfc9112#name-origin-form
             // search the query split
             int queryIndex = searchNext(start, end, '?');
-            this.queryIndex = queryIndex;
-            int length = (queryIndex == -1 ? end : queryIndex) - start;
+            int fragmentIndex = searchNext(start, end, '#');
+            int indexToUse;
+            if (fragmentIndex != -1 && (queryIndex > fragmentIndex || queryIndex == -1)) {
+                this.queryIndex = -1;
+                indexToUse = fragmentIndex;
+            } else {
+                this.queryIndex = queryIndex;
+                indexToUse = queryIndex;
+            }
+            int length = (indexToUse == -1 ? end : indexToUse) - start;
+            parsedTarget = true;
             return URLDecoder.decode(new String(buf, start, length), StandardCharsets.UTF_8);
-        } else if (start + 4 > end && buf[start] == 'h' && buf[start + 1] == 't' && buf[start + 2] == 't' && buf[start + 3] == 'p') {
+        } else if (end > start + 4  && buf[start] == 'h' && buf[start + 1] == 't' && buf[start + 2] == 't' && buf[start + 3] == 'p') {
             // most likely https://www.rfc-editor.org/rfc/rfc9112#name-absolute-form
             // leverage the standard URL parser for this
             try {
                 url = new URL(new String(buf, start, end - start));
-                return url.getFile();
+                parsedTarget = true;
+                return url.getPath();
             } catch (MalformedURLException e) {
                 return null;
             }
@@ -53,12 +63,20 @@ public class URLParser {
     }
 
     private Map<String, String> parseQuery() {
+        if (!parsedTarget) throw new IllegalStateException();
+
         String query;
         if (url != null) {
             query = url.getQuery();
             if (query == null) query = "";
         } else if (queryIndex != -1) {
-            query = new String(buf, queryIndex, end - queryIndex);
+            int startIndex = queryIndex + 1;
+            int length = end - startIndex;
+            if (length > 0) {
+                query = new String(buf, startIndex, length);
+            } else {
+                query = "";
+            }
         } else {
             query = "";
         }
@@ -70,28 +88,29 @@ public class URLParser {
 
         // See https://www.rfc-editor.org/rfc/rfc3986#section-3.4
         String currKey = null;
-        int lastStart = 0;
+        int nextStart = 0;
         int length = query.length();
         for (int i = 0; i < length; i++) {
             char c = query.charAt(i);
             if (currKey == null && c == '=') {
-                currKey = URLDecoder.decode(query.substring(lastStart + 1, i), StandardCharsets.UTF_8);
-                lastStart = i;
+                currKey = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
+                nextStart = i + 1;
             } else if (c == '&') {
-                String val = URLDecoder.decode(query.substring(lastStart + 1, i), StandardCharsets.UTF_8);
+                String val = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
                 if (currKey != null) {
                     map.put(currKey, val);
                     currKey = null;
                 } else {
-                    map.put(val, "");
+                    map.put(val, null);
                 }
-                lastStart = i;
+                nextStart = i + 1;
             } else if (c == '#' || i == length - 1) {
-                String val = URLDecoder.decode(query.substring(lastStart + 1), StandardCharsets.UTF_8);
+                String subString = c == '#' ? query.substring(nextStart, i) : query.substring(nextStart);
+                String val = URLDecoder.decode(subString, StandardCharsets.UTF_8);
                 if (currKey != null) {
                     map.put(currKey, val);
-                } else {
-                    map.put(val, "");
+                } else if (!val.isEmpty()) {
+                    map.put(val, null);
                 }
                 break;
             }
