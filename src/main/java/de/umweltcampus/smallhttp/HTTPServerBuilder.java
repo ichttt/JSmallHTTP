@@ -1,5 +1,6 @@
 package de.umweltcampus.smallhttp;
 
+import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.internal.handler.DefaultErrorHandler;
 
 import java.io.IOException;
@@ -15,6 +16,8 @@ public class HTTPServerBuilder {
     private int socketTimeoutMillis;
     private int requestHeaderReadTimeoutMillis;
     private int requestHandlingTimeoutMillis;
+    private boolean allowTraceConnect;
+    private boolean builtinServerWideOptions;
 
     private HTTPServerBuilder(int port, RequestHandler handler) {
         this.port = port;
@@ -24,6 +27,8 @@ public class HTTPServerBuilder {
         this.socketTimeoutMillis = 30000;
         this.requestHeaderReadTimeoutMillis = 30000;
         this.requestHandlingTimeoutMillis = -1;
+        this.allowTraceConnect = false;
+        this.builtinServerWideOptions = true;
     }
 
     /**
@@ -37,6 +42,30 @@ public class HTTPServerBuilder {
         if (port < 0 || port > 0xFFFF) throw new IllegalArgumentException("Invalid port " + port);
         if (handler == null) throw new IllegalArgumentException("No handler provided!");
         return new HTTPServerBuilder(port, handler);
+    }
+
+    /**
+     * Sets the number of maximum threads for the server to listen on, resulting in the max number of requests a server can process simultaneously
+     *
+     * @param count The maximum thread count
+     * @return The current builder
+     */
+    public HTTPServerBuilder setThreadCount(int count) {
+        if (count < 0 || count > Short.MAX_VALUE) throw new IllegalArgumentException("Invalid thread count!");
+        this.threadCount = count;
+        return this;
+    }
+
+    /**
+     * Sets a custom error handler that react to certain error that may happen inside this library
+     *
+     * @param errorHandler The custom error handler
+     * @return The current builder
+     */
+    public HTTPServerBuilder setErrorHandler(ErrorHandler errorHandler) {
+        if (errorHandler == null) throw new IllegalArgumentException("No handler provided!");
+        this.errorHandler = errorHandler;
+        return this;
     }
 
     /**
@@ -82,6 +111,31 @@ public class HTTPServerBuilder {
     }
 
     /**
+     * Marks the methods {@link Method#TRACE} and {@link Method#CONNECT} as globally supported/unsupported.
+     * If you {@link RequestHandler} does handle those methods, set this to true to receive them.
+     *
+     * @param allowTraceConnect True if requests for these methods should be handeled, false otherwise
+     * @return The current builder
+     */
+    public HTTPServerBuilder setAllowTraceConnect(boolean allowTraceConnect) {
+        this.allowTraceConnect = allowTraceConnect;
+        return this;
+    }
+
+    /**
+     * If true, the server will handle {@link Method#OPTIONS} globally for server-wide requests.
+     * This setting only applies if the client uses the method with the asterisk-form, see <a href="https://www.rfc-editor.org/rfc/rfc9112#name-asterisk-form">RFC 9112</a>.
+     * Other requests are still forwarded to the handler
+     *
+     * @param builtinServerWideOptions True if requests for serer wide OPTIONS requests should be handled, false otherwise
+     * @return The current builder
+     */
+    public HTTPServerBuilder setEnableBuiltinServerWideOptions(boolean builtinServerWideOptions) {
+        this.builtinServerWideOptions = builtinServerWideOptions;
+        return this;
+    }
+
+    /**
      * Builds and starts a new server with the specified options
      *
      * @throws IOException If the server startup fails
@@ -102,32 +156,8 @@ public class HTTPServerBuilder {
         return threadCount;
     }
 
-    /**
-     * Sets the number of maximum threads for the server to listen on, resulting in the max number of requests a server can process simultaneously
-     *
-     * @param count The maximum thread count
-     * @return The current builder
-     */
-    public HTTPServerBuilder setThreadCount(int count) {
-        if (count < 0 || count > Short.MAX_VALUE) throw new IllegalArgumentException("Invalid thread count!");
-        this.threadCount = count;
-        return this;
-    }
-
     public ErrorHandler getErrorHandler() {
         return errorHandler;
-    }
-
-    /**
-     * Sets a custom error handler that react to certain error that may happen inside this library
-     *
-     * @param errorHandler The custom error handler
-     * @return The current builder
-     */
-    public HTTPServerBuilder setErrorHandler(ErrorHandler errorHandler) {
-        if (errorHandler == null) throw new IllegalArgumentException("No handler provided!");
-        this.errorHandler = errorHandler;
-        return this;
     }
 
     public int getSocketTimeoutMillis() {
@@ -140,5 +170,13 @@ public class HTTPServerBuilder {
 
     public int getRequestHandlingTimeoutMillis() {
         return requestHandlingTimeoutMillis;
+    }
+
+    public boolean isAllowTraceConnect() {
+        return allowTraceConnect;
+    }
+
+    public boolean isBuiltinServerWideOptions() {
+        return builtinServerWideOptions;
     }
 }

@@ -20,25 +20,33 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public final class HTTPClientHandler implements Runnable {
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
     private static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
+    private static final PrecomputedHeader ALLOW_NO_TRACE_CONNECT_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).filter(method -> method != Method.TRACE && method != Method.CONNECT).map(Enum::name).collect(Collectors.joining(", ")));
+    private static final PrecomputedHeader ALLOW_ALL_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).map(Enum::name).collect(Collectors.joining(", ")));
     private final ClientHandlerState state = new ClientHandlerState();
     private final Socket socket;
     private final ErrorHandler errorHandler;
     private final RequestHandler handler;
     private final ClientHandlerTracker tracker;
+    private final boolean allowTraceConnect;
+    private final boolean builtinServerWideOptions;
     private InputStream inputStream;
     private int read;
     private int availableBytes;
     private volatile boolean externalTimeout = false;
 
-    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker) {
+    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker, boolean allowTraceConnect, boolean builtinServerWideOptions) {
         this.socket = socket;
         this.errorHandler = errorHandler;
         this.handler = handler;
         this.tracker = tracker;
+        this.allowTraceConnect = allowTraceConnect;
+        this.builtinServerWideOptions = builtinServerWideOptions;
         tracker.registerHandler(this);
     }
 
@@ -95,7 +103,7 @@ public final class HTTPClientHandler implements Runnable {
             return false; // An error occurred while parsing the status line. This means also an error was already returned
         }
 
-        if (httpRequest.getMethod() == Method.CONNECT || httpRequest.getMethod() == Method.TRACE) {
+        if (!this.allowTraceConnect && (httpRequest.getMethod() == Method.CONNECT || httpRequest.getMethod() == Method.TRACE)) {
             // This server implementation doesn't implement these methods
             // We send a 501 response to indicate this (see https://www.rfc-editor.org/rfc/rfc9110#section-9)
             ResponseToken token = newWriter(context, httpRequest.getVersion())
@@ -105,6 +113,7 @@ public final class HTTPClientHandler implements Runnable {
             ResponseTokenImpl.validate(token);
             return false;
         }
+
         boolean success = parseHeaders(context, httpRequest);
         if (!success) {
             ResponseTokenImpl.clearTracking(true);
@@ -122,6 +131,29 @@ public final class HTTPClientHandler implements Runnable {
 
         httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
 
+        if (httpRequest.getPath() == null) {
+            // There are only two cases where this is OK: allowTraceConnect is true and the method is CONNECT or the method is OPTIONS and the target is "*"
+            if (httpRequest.getMethod() == Method.OPTIONS && httpRequest.isAsteriskRequest()) {
+                if (this.builtinServerWideOptions) {
+                    newWriter(context, httpRequest.getVersion())
+                            .respondWithoutContentType(Status.NO_CONTENT)
+                            .addHeader(this.allowTraceConnect ? ALLOW_ALL_HEADER : ALLOW_NO_TRACE_CONNECT_HEADER)
+                            .sendWithoutBody();
+                    return canKeepConnectionAlive(httpRequest);
+                }
+            } else if (httpRequest.getMethod() != Method.CONNECT) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Invalid Request Target (URI) for the specified method!");
+                return false;
+            }
+            // We only get here if either
+            // a) it's a server-wide OPTIONS request, but handling is disabled or
+            // b) the method is CONNECT and allowTraceConnect is true
+            // In that case we forward a null path to handler and trust that it knows what to do with it
+        }
+
         try {
             ResponseToken token = this.handler.answerRequest(httpRequest, newWriter(context, httpRequest.getVersion()));
             if (!ResponseTokenImpl.validate(token))
@@ -138,6 +170,10 @@ public final class HTTPClientHandler implements Runnable {
 
         // We finished the request. Now we need to check if we should persist the current connection
         // See https://www.rfc-editor.org/rfc/rfc9112#section-9.3 for this
+        return canKeepConnectionAlive(httpRequest);
+    }
+
+    private boolean canKeepConnectionAlive(HTTPRequest httpRequest) {
         String connection = httpRequest.getFirstHeader("connection");
         if ("close".equals(connection)) {
             return false;
@@ -179,7 +215,7 @@ public final class HTTPClientHandler implements Runnable {
             return null;
         }
 
-        String path;
+
         if (pathEnd == read) {
             newTempWriter(context).respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
                     .addHeader(CONNECTION_CLOSE_HEADER)

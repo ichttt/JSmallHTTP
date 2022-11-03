@@ -70,6 +70,12 @@ public interface ResponseHeaderWriter {
     ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException;
 
     /**
+     * Sends the response to the client without any body
+     * @return The response token that must be returned to the
+     */
+    ResponseToken sendWithoutBody() throws IOException;
+
+    /**
      * Ends writing of headers and writes a string to the message body and flushes the output to the client.
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.

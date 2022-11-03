@@ -92,4 +92,8 @@ public class HTTPRequest {
         hasOpenedInputStream = true;
         return new SequenceInputStream(new ByteArrayInputStream(restBuffer, bufOffset, bufLength), originalInputStream);
     }
+
+    boolean isAsteriskRequest() {
+        return urlParser.isAsteriskRequest();
+    }
 }

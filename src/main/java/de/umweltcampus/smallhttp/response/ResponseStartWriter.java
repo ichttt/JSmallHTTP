@@ -21,4 +21,13 @@ public interface ResponseStartWriter {
      * @return The new header writer.
      */
     ResponseHeaderWriter respond(Status status, CommonContentTypes contentType);
+
+    /**
+     * Begins a response by setting the response status, omitting any content type.
+     * Only use this if the content type is not applicable
+     *
+     * @param status The response status of the client.
+     * @return The new header writer.
+     */
+    ResponseHeaderWriter respondWithoutContentType(Status status);
 }

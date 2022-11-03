@@ -65,6 +65,15 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
+    public ResponseHeaderWriter respondWithoutContentType(Status status) {
+        if (status == null) throw new IllegalArgumentException();
+        if (this.status != null) throw new IllegalStateException();
+
+        this.status = status;
+        return this;
+    }
+
+    @Override
     public ResponseHeaderWriter addHeader(PrecomputedHeader header) {
         byte[] completeAsciiBytes = header.asciiBytes;
         int requiredLength = responseBufferNextIndex + completeAsciiBytes.length;
@@ -120,9 +129,18 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     public ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException {
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
         this.chunked = true;
+        this.addHeader(CHUNKED_ENCODING);
 
         sendHeader();
         return this;
+    }
+
+    @Override
+    public ResponseToken sendWithoutBody() throws IOException {
+        if (this.startedSendingData || this.status == null) throw new IllegalStateException();
+
+        sendHeader();
+        return finalizeResponse();
     }
 
     public ResponseStartWriter resetResponseBuilder() {
@@ -162,9 +180,8 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
     @Override
     public ResponseToken finalizeResponse() throws IOException {
-        if (completed) throw new IllegalStateException();
+        if (completed || !startedSendingData) throw new IllegalStateException();
 
-        if (!startedSendingData) sendHeader();
         if (chunked) {
             this.stream.write(TRANSFER_ENCODING_END); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
         }
@@ -188,7 +205,6 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         byte[] dateKey = BuiltinHeaders.DATE.headerKey.asciiBytes;
         byte[] dateValue = getServerDate().getBytes(StandardCharsets.US_ASCII);
         byte[] serverHeader = SERVER_HEADER.asciiBytes;
-        byte[] transferEncoding = this.chunked ? CHUNKED_ENCODING.asciiBytes : EMPTY_ARRAY;
 
         // Point of no return
         this.startedSendingData = true;
@@ -207,9 +223,6 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
         // Server header
         stream.write(serverHeader);
-
-        // Transfer encoding header
-        stream.write(transferEncoding);
 
         // Write the other header bytes
         stream.write(this.responseBuffer, 0, this.responseBufferNextIndex);

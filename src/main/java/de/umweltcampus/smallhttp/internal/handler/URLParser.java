@@ -126,4 +126,8 @@ public class URLParser {
         }
         return -1;
     }
+
+    public boolean isAsteriskRequest() {
+        return start + 1 == end && buf[start] == '*';
+    }
 }
