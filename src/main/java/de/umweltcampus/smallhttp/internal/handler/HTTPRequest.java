@@ -16,11 +16,7 @@ public class HTTPRequest {
     private final String path;
     private final HTTPVersion version;
     private final Map<String, List<String>> headers;
-    private boolean hasOpenedInputStream = false;
-    private byte[] restBuffer;
-    private int bufOffset;
-    private int bufLength;
-    private InputStream originalInputStream;
+    private RestBufInputStream restBufInputStream;
 
     public HTTPRequest(Method method, URLParser parser, HTTPVersion version) {
         this.method = method;
@@ -30,11 +26,8 @@ public class HTTPRequest {
         this.headers = new HashMap<>();
     }
 
-    void setRestBuffer(byte[] restBuffer, int bufOffset, int bufLength, InputStream originalInputStream) {
-        this.restBuffer = restBuffer;
-        this.bufOffset = bufOffset;
-        this.bufLength = bufLength;
-        this.originalInputStream = originalInputStream;
+    void setRestBuffer(byte[] restBuffer, int bufOffset, int bufLength, InputStream originalInputStream, int contentLength) {
+        this.restBufInputStream = new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLength);
     }
 
     void addHeader(String name, String value) {
@@ -70,6 +63,7 @@ public class HTTPRequest {
      * @return The first set value of that header, or null if no such header is present
      */
     public String getFirstHeader(String key) {
+        assert key.toLowerCase(Locale.ROOT).equals(key);
         List<String> strings = headers.get(key);
         if (strings == null) return null;
         return strings.get(0);
@@ -81,21 +75,12 @@ public class HTTPRequest {
      * @return The values of that header, or null if no such header is present
      */
     public List<String> getHeaders(String key) {
+        assert key.toLowerCase(Locale.ROOT).equals(key);
         return headers.get(key);
     }
 
-    public InputStream getInputStream() {
-        if (hasOpenedInputStream) throw new IllegalStateException();
-        String contentLength = getFirstHeader("content-length");
-        if (contentLength == null) return null;
-        int contentLengthInt;
-        try {
-            contentLengthInt = Integer.parseInt(contentLength.trim());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-        hasOpenedInputStream = true;
-        return new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLengthInt);
+    public RestBufInputStream getInputStream() {
+        return restBufInputStream;
     }
 
     boolean isAsteriskRequest() {

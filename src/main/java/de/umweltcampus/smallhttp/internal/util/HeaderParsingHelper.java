@@ -21,12 +21,12 @@ public class HeaderParsingHelper {
 
     public static void handleError(ResponseStartWriter writer, boolean inUri, int errorCode) throws IOException {
         if (errorCode == INVALID_CHAR_FOUND) {
-            writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush(INVALID_CHAR_FOUND_TEXT);
+            writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).addHeader(HTTPClientHandler.CONNECTION_CLOSE_HEADER).writeBodyAndFlush(INVALID_CHAR_FOUND_TEXT);
         } else if (errorCode == TOO_LARGE) {
             if (inUri) {
-                writer.respond(Status.URI_TOO_LONG, CommonContentTypes.PLAIN).writeBodyAndFlush(URI_END_REACHED_TEXT);
+                writer.respond(Status.URI_TOO_LONG, CommonContentTypes.PLAIN).addHeader(HTTPClientHandler.CONNECTION_CLOSE_HEADER).writeBodyAndFlush(URI_END_REACHED_TEXT);
             } else {
-                writer.respond(Status.REQUEST_HEADER_FIELDS_TOO_LARGE, CommonContentTypes.PLAIN).writeBodyAndFlush(END_REACHED_TEXT);
+                writer.respond(Status.REQUEST_HEADER_FIELDS_TOO_LARGE, CommonContentTypes.PLAIN).addHeader(HTTPClientHandler.CONNECTION_CLOSE_HEADER).writeBodyAndFlush(END_REACHED_TEXT);
             }
         } else {
             throw new RuntimeException("Unknown error code " + errorCode);

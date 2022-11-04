@@ -128,6 +128,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     @Override
     public ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException {
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
+        if (this.requestVersion == HTTPVersion.HTTP_1_0) throw new IllegalStateException("Chunked transfer is forbidden for HTTP/1.0!");
         this.chunked = true;
         this.addHeader(CHUNKED_ENCODING);
 

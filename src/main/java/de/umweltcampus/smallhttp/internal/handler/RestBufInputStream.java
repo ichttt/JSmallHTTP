@@ -20,6 +20,10 @@ public class RestBufInputStream extends InputStream {
         this.readStream = 0;
     }
 
+    boolean isDrained() {
+        return readStream >= restStreamRead;
+    }
+
     @Override
     public int available() throws IOException {
         if (readEnd > bufIndex) {
@@ -58,7 +62,7 @@ public class RestBufInputStream extends InputStream {
         if (readEnd > bufIndex) {
             int lengthToCopy = Math.min(readEnd - bufIndex, len);
             System.arraycopy(buf, bufIndex, b, off, lengthToCopy);
-            bufIndex = readEnd;
+            bufIndex += lengthToCopy;
             return lengthToCopy;
         } else if (restStreamRead > readStream) {
             int lengthToRead = Math.min(restStreamRead - readStream, len);
@@ -70,5 +74,24 @@ public class RestBufInputStream extends InputStream {
             return actualRead;
         }
         return -1;
+    }
+
+    @Override
+    public long skip(long n) throws IOException {
+        if (n <= 0) {
+            return 0;
+        }
+        int len = (int) Math.min(n, Integer.MAX_VALUE);
+        if (readEnd > bufIndex) {
+            int lengthToSkip = Math.min(readEnd - bufIndex, len);
+            bufIndex += lengthToSkip;
+            return lengthToSkip;
+        } else if (restStreamRead > readStream) {
+            int lengthToSkip = Math.min(restStreamRead - readStream, len);
+            long actualSkip = restStream.skip(lengthToSkip);
+            readStream += actualSkip;
+            return actualSkip;
+        }
+        return 0;
     }
 }

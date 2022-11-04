@@ -18,6 +18,7 @@ public class HTTPServerBuilder {
     private int requestHandlingTimeoutMillis;
     private boolean allowTraceConnect;
     private boolean builtinServerWideOptions;
+    private short maxClientBodyLengthKB;
 
     private HTTPServerBuilder(int port, RequestHandler handler) {
         this.port = port;
@@ -29,6 +30,7 @@ public class HTTPServerBuilder {
         this.requestHandlingTimeoutMillis = -1;
         this.allowTraceConnect = false;
         this.builtinServerWideOptions = true;
+        this.maxClientBodyLengthKB = 8 * 1024; // Default max: 8MB
     }
 
     /**
@@ -136,6 +138,16 @@ public class HTTPServerBuilder {
     }
 
     /**
+     * Sets the maximum size of the body a client is allowed to submit to the server.
+     * If the size is exceeded, the client will get a response with a {@link de.umweltcampus.smallhttp.data.Status#CONTENT_TOO_LARGE}
+     *
+     * @param maxClientBodyLengthKB The maximum length in KB
+     */
+    public void setMaxClientBodyLengthKB(short maxClientBodyLengthKB) {
+        this.maxClientBodyLengthKB = maxClientBodyLengthKB;
+    }
+
+    /**
      * Builds and starts a new server with the specified options
      *
      * @throws IOException If the server startup fails
@@ -178,5 +190,9 @@ public class HTTPServerBuilder {
 
     public boolean isBuiltinServerWideOptions() {
         return builtinServerWideOptions;
+    }
+
+    public short getMaxClientBodyLengthKB() {
+        return maxClientBodyLengthKB;
     }
 }

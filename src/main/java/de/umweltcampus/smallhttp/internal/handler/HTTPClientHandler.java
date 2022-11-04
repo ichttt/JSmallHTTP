@@ -21,11 +21,12 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public final class HTTPClientHandler implements Runnable {
+    public static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
-    private static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
     private static final PrecomputedHeader ALLOW_NO_TRACE_CONNECT_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).filter(method -> method != Method.TRACE && method != Method.CONNECT).map(Enum::name).collect(Collectors.joining(", ")));
     private static final PrecomputedHeader ALLOW_ALL_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).map(Enum::name).collect(Collectors.joining(", ")));
     private final ClientHandlerState state = new ClientHandlerState();
@@ -35,18 +36,20 @@ public final class HTTPClientHandler implements Runnable {
     private final ClientHandlerTracker tracker;
     private final boolean allowTraceConnect;
     private final boolean builtinServerWideOptions;
+    private final int maxBodyLength;
     private InputStream inputStream;
     private int read;
     private int availableBytes;
     private volatile boolean externalTimeout = false;
 
-    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker, boolean allowTraceConnect, boolean builtinServerWideOptions) {
+    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker, boolean allowTraceConnect, boolean builtinServerWideOptions, int maxBodyLength) {
         this.socket = socket;
         this.errorHandler = errorHandler;
         this.handler = handler;
         this.tracker = tracker;
         this.allowTraceConnect = allowTraceConnect;
         this.builtinServerWideOptions = builtinServerWideOptions;
+        this.maxBodyLength = maxBodyLength;
         tracker.registerHandler(this);
     }
 
@@ -129,7 +132,59 @@ public final class HTTPClientHandler implements Runnable {
             return false;
         }
 
-        httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream);
+        List<String> contentLengthHeaders = httpRequest.getHeaders("content-length");
+        // Validate that no transfer encoding header is present.
+        // See https://www.rfc-editor.org/rfc/rfc9112#section-6.1 for logic requirements
+        if (httpRequest.getHeaders("transfer-encoding") != null) {
+            if (contentLengthHeaders != null) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Can't handle both transfer-encoding and content-length!");
+            } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_0) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("HTTP/1.0 clients are not allowed to send transfer-encoded messages!");
+            } else {
+                // No content-length and http/1.1. Still invalid, we require a  length
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.LENGTH_REQUIRED, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("This server requires messages with a body to contain a content-length header!");
+            }
+
+            // ALWAYS close the connection on transfer-encoding messages.
+            // We don't parse them server-side, so we don't know where the next request starts.
+            return false;
+        }
+        if (contentLengthHeaders != null && contentLengthHeaders.size() > 1) {
+            newWriter(context, httpRequest.getVersion())
+                    .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Received multiple content-length headers!");
+            return false;
+        } else if (contentLengthHeaders != null && !contentLengthHeaders.isEmpty()) {
+            long length;
+            try {
+                length = Long.parseLong(contentLengthHeaders.get(0));
+            } catch (NumberFormatException e) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Received invalid content-length header!");
+                return false;
+            }
+            if (length > (long) maxBodyLength) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.CONTENT_TOO_LARGE, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Received too long content, max is ", maxBodyLength + "", " bytes!");
+                return false;
+            }
+            httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream, (int) length);
+        }
+
 
         if (httpRequest.getPath() == null) {
             // There are only two cases where this is OK: allowTraceConnect is true and the method is CONNECT or the method is OPTIONS and the target is "*"
@@ -139,7 +194,7 @@ public final class HTTPClientHandler implements Runnable {
                             .respondWithoutContentType(Status.NO_CONTENT)
                             .addHeader(this.allowTraceConnect ? ALLOW_ALL_HEADER : ALLOW_NO_TRACE_CONNECT_HEADER)
                             .sendWithoutBody();
-                    return canKeepConnectionAlive(httpRequest);
+                    return keepConnectionAlive(httpRequest);
                 }
             } else if (httpRequest.getMethod() != Method.CONNECT) {
                 newWriter(context, httpRequest.getVersion())
@@ -170,15 +225,16 @@ public final class HTTPClientHandler implements Runnable {
 
         // We finished the request. Now we need to check if we should persist the current connection
         // See https://www.rfc-editor.org/rfc/rfc9112#section-9.3 for this
-        return canKeepConnectionAlive(httpRequest);
+        return keepConnectionAlive(httpRequest);
     }
 
-    private boolean canKeepConnectionAlive(HTTPRequest httpRequest) {
+    private boolean keepConnectionAlive(HTTPRequest httpRequest) {
         String connection = httpRequest.getFirstHeader("connection");
         if ("close".equals(connection)) {
             return false;
         } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1 || "keep-alive".equals(connection)) {
-            return true;
+            RestBufInputStream stream = httpRequest.getInputStream();
+            return stream.isDrained();
         } else {
             return false;
         }

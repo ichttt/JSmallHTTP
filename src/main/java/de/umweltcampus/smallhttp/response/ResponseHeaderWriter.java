@@ -62,6 +62,9 @@ public interface ResponseHeaderWriter {
      * Use this only if the length of the response can't be determined easily. Otherwise, use {@link #beginBodyWithKnownSize(int)}.
      * This header writer becomes invalid once this is called.
      * <br>
+     * <strong>This method cannot be called for {@link de.umweltcampus.smallhttp.data.HTTPVersion#HTTP_1_0} connections!</strong>
+     * HTTP/1.0 does not support proper chunked encoding, and therefor cannot utilize this.
+     * <br>
      * Once this is called, the server might begin writing data to the client.
      * Because of this, <strong>any exception thrown by the handler after this call can not be handled properly!</strong>
      * In that case, the connection to the client will be forcibly closed!

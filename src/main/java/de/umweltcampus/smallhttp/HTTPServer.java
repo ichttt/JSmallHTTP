@@ -25,6 +25,7 @@ public class HTTPServer {
     private final int socketTimeout;
     private final boolean allowTraceConnect;
     private final boolean builtinServerWideOptions;
+    private final int maxBodyLengthBytes;
     private final AtomicBoolean isShutdown = new AtomicBoolean(false);
     private final ClientHandlerTracker tracker = new ClientHandlerTracker();
     private final AtomicInteger threadNumber = new AtomicInteger(1);
@@ -43,6 +44,7 @@ public class HTTPServer {
         this.socketTimeout = builder.getSocketTimeoutMillis();
         this.allowTraceConnect = builder.isAllowTraceConnect();
         this.builtinServerWideOptions = builder.isBuiltinServerWideOptions();
+        this.maxBodyLengthBytes = ((int) builder.getMaxClientBodyLengthKB()) * 1024;
 
         this.mainSocketListener = new Thread(this::listen);
         this.mainSocketListener.setName("HTTPServer port " + port + " listener");
@@ -70,7 +72,7 @@ public class HTTPServer {
                 if (socketTimeout != -1) {
                     acceptedSocket.setSoTimeout(socketTimeout);
                 }
-                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler, this.tracker, this.allowTraceConnect, this.builtinServerWideOptions);
+                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler, this.tracker, this.allowTraceConnect, this.builtinServerWideOptions, this.maxBodyLengthBytes);
                 try {
                     this.executor.submit(httpClientHandler);
                 } catch (RejectedExecutionException e) {
