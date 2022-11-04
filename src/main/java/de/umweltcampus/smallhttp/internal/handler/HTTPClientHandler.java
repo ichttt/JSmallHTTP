@@ -234,7 +234,7 @@ public final class HTTPClientHandler implements Runnable {
             return false;
         } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1 || "keep-alive".equals(connection)) {
             RestBufInputStream stream = httpRequest.getInputStream();
-            return stream.isDrained();
+            return stream == null || stream.isDrained();
         } else {
             return false;
         }
