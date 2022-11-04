@@ -102,9 +102,6 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         System.arraycopy(nameBytes, 0, responseBuffer, responseBufferNextIndex, nameBytes.length);
         responseBufferNextIndex += nameBytes.length;
 
-        responseBuffer[responseBufferNextIndex] = ':';
-        responseBufferNextIndex++;
-
         System.arraycopy(valueBytes, 0, responseBuffer, responseBufferNextIndex, valueBytes.length);
         responseBufferNextIndex += valueBytes.length;
 
@@ -217,7 +214,6 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
 
         // Date header
         stream.write(dateKey);
-        stream.write(':');
         stream.write(dateValue);
         stream.write('\r');
         stream.write('\n');

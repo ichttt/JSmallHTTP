@@ -26,9 +26,8 @@ public class PrecomputedHeader {
             }
         }
 
-        byte[] completeBytes = Arrays.copyOf(key.asciiBytes, key.asciiBytes.length + valueBytes.length + 3);
-        completeBytes[key.asciiBytes.length] = ':';
-        System.arraycopy(valueBytes, 0, completeBytes, key.asciiBytes.length + 1, valueBytes.length);
+        byte[] completeBytes = Arrays.copyOf(key.asciiBytes, key.asciiBytes.length + valueBytes.length + 2);
+        System.arraycopy(valueBytes, 0, completeBytes, key.asciiBytes.length, valueBytes.length);
         completeBytes[completeBytes.length - 2] = '\r';
         completeBytes[completeBytes.length - 1] = '\n';
         this.asciiBytes = completeBytes;

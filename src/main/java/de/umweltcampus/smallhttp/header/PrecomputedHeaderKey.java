@@ -3,6 +3,7 @@ package de.umweltcampus.smallhttp.header;
 import de.umweltcampus.smallhttp.internal.handler.InternalConstants;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * A header key that has been validated and parsed to ascii bytes in advance
@@ -19,11 +20,13 @@ public class PrecomputedHeaderKey {
         byte[] asciiBytes = key.getBytes(StandardCharsets.US_ASCII);
         for (byte asciiByte : asciiBytes) {
             for (char forbiddenChar : InternalConstants.FORBIDDEN_HEADER_NAME_CHARS) {
-                if (asciiByte == forbiddenChar)
-                    throw new IllegalArgumentException();
+                if (asciiByte == forbiddenChar) throw new IllegalArgumentException();
             }
+            if (asciiByte == ':') throw new IllegalArgumentException();
         }
 
-        this.asciiBytes = asciiBytes;
+        byte[] expanded = Arrays.copyOf(asciiBytes, asciiBytes.length + 1);
+        expanded[asciiBytes.length] = ':';
+        this.asciiBytes = expanded;
     }
 }
