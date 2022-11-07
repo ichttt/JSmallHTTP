@@ -17,19 +17,19 @@ public class ResponseWriterTest {
     @Test
     public void testEmptyHeaderWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .beginBodyWithKnownSize(0)
                 .finalizeResponse();
 
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nContent-Length:0\r\n\r\n", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:" + TestDateFormatter.EXPECTED_VAL + "\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nContent-Length:0\r\n\r\n", s);
     }
 
     @Test
     public void testSingleHeaderWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .beginBodyWithKnownSize(0)
@@ -37,26 +37,26 @@ public class ResponseWriterTest {
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:0\r\n\r\n", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:" + TestDateFormatter.EXPECTED_VAL + "\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:0\r\n\r\n", s);
     }
 
     @Test
     public void testBodyWriting() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .writeBodyAndFlush("Das ist ein Test!");
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
+        Assertions.assertEquals("HTTP/1.1 200 Ok\r\nDate:" + TestDateFormatter.EXPECTED_VAL + "\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:ABCTest\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
     }
 
     @Test
     public void testBuilderReset() throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new TestResponseWriter(outputStream, new ReusableClientContext(), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .resetResponseBuilder()
@@ -66,6 +66,6 @@ public class ResponseWriterTest {
 
         // TODO once builtin headers exists, these need to be incorporated
         String s = outputStream.toString(StandardCharsets.US_ASCII);
-        Assertions.assertEquals("HTTP/1.1 500 Internal Server Error\r\nDate:DUMMYDATE\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:Test2\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
+        Assertions.assertEquals("HTTP/1.1 500 Internal Server Error\r\nDate:" + TestDateFormatter.EXPECTED_VAL + "\r\nServer:JSmallHTTP\r\nContent-Type:text/plain;charset=UTF-8\r\nETag:Test2\r\nContent-Length:17\r\n\r\nDas ist ein Test!", s);
     }
 }

@@ -6,31 +6,26 @@ import de.umweltcampus.smallhttp.header.BuiltinHeaders;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.response.*;
+import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
+import de.umweltcampus.smallhttp.response.ChunkedResponseWriter;
+import de.umweltcampus.smallhttp.response.FixedResponseBodyWriter;
+import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
+import de.umweltcampus.smallhttp.response.ResponseStartWriter;
+import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
-import java.util.TimeZone;
 
 public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, FixedResponseBodyWriter, ChunkedResponseWriter {
-    private static final Calendar CALENDAR = Calendar.getInstance();
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ROOT);
     private static final PrecomputedHeader SERVER_HEADER = new PrecomputedHeader(BuiltinHeaders.SERVER.headerKey, "JSmallHTTP");
     private static final PrecomputedHeader CHUNKED_ENCODING = new PrecomputedHeader(BuiltinHeaders.TRANSFER_ENCODING.headerKey, "chunked");
-    private static final byte[] EMPTY_ARRAY = new byte[0];
     private static final byte[] CRLF_BYTES = "\r\n".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] TRANSFER_ENCODING_END = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
 
-    static {
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
-    }
-
     private final OutputStream stream;
     private final byte[] responseBuffer;
+    private final ResponseDateFormatter responseDateFormatter;
     private final HTTPVersion requestVersion;
     private int responseBufferNextIndex = 0;
     private Status status = null;
@@ -41,6 +36,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     public ResponseWriter(OutputStream stream, ReusableClientContext context, HTTPVersion requestVersion) {
         this.stream = stream;
         this.responseBuffer = context.responseBuffer;
+        this.responseDateFormatter = context.responseDateFormatter;
         this.requestVersion = requestVersion;
     }
 
@@ -188,20 +184,11 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         return ResponseTokenImpl.get();
     }
 
-    /**
-     * Gets the server date in the HTTP format. Protected so it can be changed for reproducible tests
-     * @return
-     */
-    protected String getServerDate() {
-        // Format according to https://www.rfc-editor.org/rfc/rfc9110#section-5.6.7
-        return DATE_FORMAT.format(CALENDAR.getTime());
-    }
-
 
     private void sendHeader() throws IOException {
         // Prepare remaining builtin headers
         byte[] dateKey = BuiltinHeaders.DATE.headerKey.asciiBytes;
-        byte[] dateValue = getServerDate().getBytes(StandardCharsets.US_ASCII);
+        byte[] dateValue = responseDateFormatter.format().getBytes(StandardCharsets.US_ASCII);
         byte[] serverHeader = SERVER_HEADER.asciiBytes;
 
         // Point of no return
