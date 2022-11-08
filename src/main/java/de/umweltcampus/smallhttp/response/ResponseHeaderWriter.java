@@ -56,11 +56,11 @@ public interface ResponseHeaderWriter {
      * @return The new body writer
      * @throws HTTPWriteException If the write operation fails
      */
-    FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws HTTPWriteException;
+    FixedResponseBodyWriter beginBodyWithKnownSize(long size) throws HTTPWriteException;
 
     /**
      * Ends writing of the headers and begins to write the body.
-     * Use this only if the length of the response can't be determined easily. Otherwise, use {@link #beginBodyWithKnownSize(int)}.
+     * Use this only if the length of the response can't be determined easily. Otherwise, use {@link #beginBodyWithKnownSize(long)}.
      * This header writer becomes invalid once this is called.
      * <br>
      * <strong>This method cannot be called for {@link de.umweltcampus.smallhttp.data.HTTPVersion#HTTP_1_0} connections!</strong>
@@ -83,7 +83,7 @@ public interface ResponseHeaderWriter {
 
     /**
      * Ends writing of headers and writes a string to the message body and flushes the output to the client.
-     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(long)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      * @param s The string to write
      * @return A response token that must be returned, marking the response as complete
@@ -102,7 +102,7 @@ public interface ResponseHeaderWriter {
 
     /**
      * Ends writing of headers and writes an array of strings to the message body and flushes the output to the client.
-     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(long)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      * @param strings The strings to write
      * @return A response token that must be returned, marking the response as complete
@@ -110,7 +110,7 @@ public interface ResponseHeaderWriter {
      */
     default ResponseToken writeBodyAndFlush(String... strings) throws HTTPWriteException {
         byte[][] arrays = new byte[strings.length][];
-        int length = 0;
+        long length = 0;
         for (int i = 0; i < strings.length; i++) {
             byte[] bytes = strings[i].getBytes(StandardCharsets.UTF_8);
             length += bytes.length;
@@ -130,7 +130,7 @@ public interface ResponseHeaderWriter {
 
     /**
      * Ends writing of headers and writes a byte array to the message body and flushes the output to the client.
-     * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
+     * Convenience method to avoid {@link #beginBodyWithKnownSize(long)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
      * @param bytes The bytes to write
      * @return A response token that must be returned, marking the response as complete

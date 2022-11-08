@@ -1,5 +1,7 @@
 package de.umweltcampus.webservices.internal;
 
+import de.umweltcampus.smallhttp.HTTPServer;
+import de.umweltcampus.smallhttp.HTTPServerBuilder;
 import de.umweltcampus.webservices.ServiceProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,7 +23,7 @@ public class Launcher {
         LOGGER.debug("Started up log4j in {} ms", (stopTime - startTime));
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         if (DEV_MODE) {
             LOGGER.warn("DEV MODE ENABLED");
         } else {
@@ -48,5 +50,9 @@ public class Launcher {
             otherProviders.remove(provider);
             provider.initialize(otherProviders);
         }
+
+        LOGGER.debug("Services initialized");
+
+        HTTPServer server = HTTPServerBuilder.create(8080, serviceProviders.get(0).createService()).build();
     }
 }

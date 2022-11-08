@@ -18,4 +18,10 @@ public interface ServiceProvider {
      * @throws IOException if the creation of the service fails
      */
     WebserviceBase createService() throws IOException;
+
+    /**
+     * Gets the static name of the service
+     * @return The name of the service
+     */
+    String name();
 }

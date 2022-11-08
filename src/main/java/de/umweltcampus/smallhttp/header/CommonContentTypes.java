@@ -14,8 +14,10 @@ public enum CommonContentTypes {
     BINARY_DATA("application/octet-stream", false);
 
     public final PrecomputedHeader header;
+    public final String mimeType;
 
     CommonContentTypes(String name, boolean utf8) {
+        this.mimeType = name;
         this.header = new PrecomputedHeader(BuiltinHeaders.CONTENT_TYPE.headerKey, name + (utf8 ? ";charset=UTF-8" : ""));
     }
 }

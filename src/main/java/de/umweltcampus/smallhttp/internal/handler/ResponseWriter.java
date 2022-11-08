@@ -110,7 +110,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws HTTPWriteException {
+    public FixedResponseBodyWriter beginBodyWithKnownSize(long size) throws HTTPWriteException {
         if (size < 0) throw new IllegalArgumentException();
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
         this.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "");
