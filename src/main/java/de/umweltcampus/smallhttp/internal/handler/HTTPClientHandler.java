@@ -170,7 +170,7 @@ public class HTTPClientHandler implements Runnable {
             if (!ResponseTokenImpl.validate(token))
                 throw new RuntimeException("Invalid token returned from handler!");
         } catch (Exception e) {
-            if (!this.errorHandler.onResponseHandlerException(this, socket, e)) {
+            if (!this.errorHandler.onResponseHandlerException(this, httpRequest, socket, e)) {
                 return false;
             }
         }
