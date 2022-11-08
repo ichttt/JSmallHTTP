@@ -64,6 +64,7 @@ public final class HTTPClientHandler implements Runnable {
                     keepAlive = handleRequest(context);
                 } finally {
                     context.reset();
+                    ResponseTokenImpl.clearTracking(false);
                 }
             } while (keepAlive);
         } catch (SocketTimeoutException e) {
@@ -132,57 +133,9 @@ public final class HTTPClientHandler implements Runnable {
             return false;
         }
 
-        List<String> contentLengthHeaders = httpRequest.getHeaders("content-length");
-        // Validate that no transfer encoding header is present.
-        // See https://www.rfc-editor.org/rfc/rfc9112#section-6.1 for logic requirements
-        if (httpRequest.getHeaders("transfer-encoding") != null) {
-            if (contentLengthHeaders != null) {
-                newWriter(context, httpRequest.getVersion())
-                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
-                        .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("Can't handle both transfer-encoding and content-length!");
-            } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_0) {
-                newWriter(context, httpRequest.getVersion())
-                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
-                        .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("HTTP/1.0 clients are not allowed to send transfer-encoded messages!");
-            } else {
-                // No content-length and http/1.1. Still invalid, we require a  length
-                newWriter(context, httpRequest.getVersion())
-                        .respond(Status.LENGTH_REQUIRED, CommonContentTypes.PLAIN)
-                        .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("This server requires messages with a body to contain a content-length header!");
-            }
-
-            // ALWAYS close the connection on transfer-encoding messages.
-            // We don't parse them server-side, so we don't know where the next request starts.
+        if (!validateStandardHeader(context, httpRequest)) {
+            ResponseTokenImpl.clearTracking(true);
             return false;
-        }
-        if (contentLengthHeaders != null && contentLengthHeaders.size() > 1) {
-            newWriter(context, httpRequest.getVersion())
-                    .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
-                    .addHeader(CONNECTION_CLOSE_HEADER)
-                    .writeBodyAndFlush("Received multiple content-length headers!");
-            return false;
-        } else if (contentLengthHeaders != null && !contentLengthHeaders.isEmpty()) {
-            long length;
-            try {
-                length = Long.parseLong(contentLengthHeaders.get(0));
-            } catch (NumberFormatException e) {
-                newWriter(context, httpRequest.getVersion())
-                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
-                        .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("Received invalid content-length header!");
-                return false;
-            }
-            if (length > (long) maxBodyLength) {
-                newWriter(context, httpRequest.getVersion())
-                        .respond(Status.CONTENT_TOO_LARGE, CommonContentTypes.PLAIN)
-                        .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("Received too long content, max is ", maxBodyLength + "", " bytes!");
-                return false;
-            }
-            httpRequest.setRestBuffer(headerBuffer, read, availableBytes, inputStream, (int) length);
         }
 
 
@@ -309,36 +262,6 @@ public final class HTTPClientHandler implements Runnable {
         return new HTTPRequest(method, parser, matchingVersion);
     }
 
-    public int readMoreBytes(byte[] target) throws IOException {
-        if (target.length == availableBytes) return -1;
-        int read = inputStream.read(target, availableBytes, target.length - availableBytes);
-        if (read == -1)
-            availableBytes = -1; // Cant read more bytes, but more were required. This is an invalid state, so set available bytes to -1
-        else
-            availableBytes += read;
-        return availableBytes;
-    }
-
-    /**
-     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
-     * @param context The context to use
-     * @return A new response writer for immediate use
-     * @throws IOException If an I/O error occurs
-     */
-    private ResponseStartWriter newTempWriter(ReusableClientContext context) throws IOException {
-        return new ResponseWriter(this.socket.getOutputStream(), context, HTTPVersion.HTTP_1_0);
-    }
-
-    /**
-     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
-     * @param context The context to use
-     * @return A new response writer for immediate use
-     * @throws IOException If an I/O error occurs
-     */
-    public ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
-        return new ResponseWriter(this.socket.getOutputStream(), context, version);
-    }
-
     private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws IOException {
         byte[] headerBuffer = context.headerBuffer;
         while (true) {
@@ -390,12 +313,106 @@ public final class HTTPClientHandler implements Runnable {
         }
     }
 
-    public int getAvailableBytes() {
-        return availableBytes;
+    private boolean validateStandardHeader(ReusableClientContext context, HTTPRequest httpRequest) throws IOException {
+        List<String> contentLengthHeaders = httpRequest.getHeaders("content-length");
+        // Validate that no transfer encoding header is present.
+        // See https://www.rfc-editor.org/rfc/rfc9112#section-6.1 for logic requirements
+        if (httpRequest.getHeaders("transfer-encoding") != null) {
+            if (contentLengthHeaders != null) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Can't handle both transfer-encoding and content-length!");
+            } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_0) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("HTTP/1.0 clients are not allowed to send transfer-encoded messages!");
+            } else {
+                // No content-length and http/1.1. Still invalid, we require a  length
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.LENGTH_REQUIRED, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("This server requires messages with a body to contain a content-length header!");
+            }
+
+            // ALWAYS close the connection on transfer-encoding messages.
+            // We don't parse them server-side, so we don't know where the next request starts.
+            return false;
+        }
+
+        // Validate that either a) one valid content length or b) no content length header is present
+        // See https://www.rfc-editor.org/rfc/rfc9112#name-content-length
+        if (contentLengthHeaders != null && contentLengthHeaders.size() > 1) {
+            newWriter(context, httpRequest.getVersion())
+                    .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                    .addHeader(CONNECTION_CLOSE_HEADER)
+                    .writeBodyAndFlush("Received multiple content-length headers!");
+            return false;
+        } else if (contentLengthHeaders != null && !contentLengthHeaders.isEmpty()) {
+            long length;
+            try {
+                length = Long.parseLong(contentLengthHeaders.get(0));
+            } catch (NumberFormatException e) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Received invalid content-length header!");
+                return false;
+            }
+            if (length > (long) maxBodyLength) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.CONTENT_TOO_LARGE, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Received too long content, max is ", maxBodyLength + "", " bytes!");
+                return false;
+            }
+            httpRequest.setRestBuffer(context.headerBuffer, read, availableBytes, inputStream, (int) length);
+        }
+        // Validate that the client send the host if the request is http/1.1
+        // See https://www.rfc-editor.org/rfc/rfc9112#section-2.2
+        if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1) {
+            List<String> host = httpRequest.getHeaders("host");
+            if (host == null || host.size() > 1) {
+                newWriter(context, httpRequest.getVersion())
+                        .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
+                        .addHeader(CONNECTION_CLOSE_HEADER)
+                        .writeBodyAndFlush("Received invalid host header!");
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    public int getRead() {
-        return read;
+    /**
+     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
+     * @param context The context to use
+     * @return A new response writer for immediate use
+     * @throws IOException If an I/O error occurs
+     */
+    private ResponseStartWriter newTempWriter(ReusableClientContext context) throws IOException {
+        return new ResponseWriter(this.socket.getOutputStream(), context, HTTPVersion.HTTP_1_0);
+    }
+
+    /**
+     * Creates a new response writer that should only be used when the request HTTP version is not yet known but a response needs to be written
+     * @param context The context to use
+     * @return A new response writer for immediate use
+     * @throws IOException If an I/O error occurs
+     */
+    private ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
+        return new ResponseWriter(this.socket.getOutputStream(), context, version);
+    }
+
+    public int readMoreBytes(byte[] target) throws IOException {
+        if (target.length == availableBytes) return -1;
+        int read = inputStream.read(target, availableBytes, target.length - availableBytes);
+        if (read == -1)
+            availableBytes = -1; // Cant read more bytes, but more were required. This is an invalid state, so set available bytes to -1
+        else
+            availableBytes += read;
+        return availableBytes;
     }
 
     public void shutdown() throws IOException {
@@ -415,5 +432,13 @@ public final class HTTPClientHandler implements Runnable {
                 this.errorHandler.onExternalTimeoutCloseFailed(this, this.socket, e);
             }
         }
+    }
+
+    public int getAvailableBytes() {
+        return availableBytes;
+    }
+
+    public int getRead() {
+        return read;
     }
 }

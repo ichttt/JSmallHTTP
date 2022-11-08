@@ -99,8 +99,13 @@ public class HeaderParsingHelper {
         do {
             for (; read < (availableBytes - 1); read++) {
                 byte byteAtPos = toSearch[read];
-                if (byteAtPos == '\r' && toSearch[read + 1] == '\n') {
-                    return read + 1; // plus on as we want to return the \n pos
+                if (byteAtPos == '\r') {
+                    if (toSearch[read + 1] == '\n') {
+                        return read + 1; // plus on as we want to return the \n pos
+                    } else {
+                        // "rouge" CR is disallowed, see https://www.rfc-editor.org/rfc/rfc9112#section-2.2
+                        return INVALID_CHAR_FOUND;
+                    }
                 }
                 for (char forbiddenChar : InternalConstants.FORBIDDEN_HEADER_VALUE_CHARS) {
                     if (forbiddenChar == byteAtPos)
