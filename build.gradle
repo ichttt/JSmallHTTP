@@ -16,9 +16,16 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    service
+}
+
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+    serviceImplementation sourceSets.main.output
+    serviceImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.19.0'
+    serviceRuntimeOnly group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
 }
 
 jmh {
