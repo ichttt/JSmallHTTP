@@ -9,6 +9,7 @@ import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.internal.util.HeaderParsingHelper;
+import de.umweltcampus.smallhttp.internal.util.StringUtil;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerState;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
@@ -17,6 +18,7 @@ import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -25,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class HTTPClientHandler implements Runnable {
+public class HTTPClientHandler implements Runnable {
     public static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
     private static final PrecomputedHeader ALLOW_NO_TRACE_CONNECT_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).filter(method -> method != Method.TRACE && method != Method.CONNECT).map(Enum::name).collect(Collectors.joining(", ")));
@@ -57,7 +59,7 @@ public final class HTTPClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            this.inputStream = socket.getInputStream();
+            this.inputStream = getInputStream();
             ReusableClientContext context = CONTEXT_THREAD_LOCAL.get();
             boolean keepAlive;
             do {
@@ -80,7 +82,7 @@ public final class HTTPClientHandler implements Runnable {
         } finally {
             ResponseTokenImpl.clearTracking(false);
             try {
-                this.socket.close();
+                close();
             } catch (IOException e) {
                 // ignore. Client might have already closed the connection
             }
@@ -183,7 +185,7 @@ public final class HTTPClientHandler implements Runnable {
     }
 
     private boolean keepConnectionAlive(HTTPRequest httpRequest) {
-        String connection = httpRequest.getFirstHeader("connection");
+        String connection = httpRequest.getSingleHeader("connection");
         if ("close".equals(connection)) {
             return false;
         } else if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1 || "keep-alive".equals(connection)) {
@@ -287,18 +289,18 @@ public final class HTTPClientHandler implements Runnable {
                 HeaderParsingHelper.handleError(newWriter(context, requestToBuild.getVersion()), false, valueEnd);
                 return false;
             }
-            int valueLength = valueEnd - read;
+            int valueLength = valueEnd - read - 1;
             String value;
             if (valueLength > 0) {
                 // Not ASCII as standard, but Latin-1. See https://www.rfc-editor.org/rfc/rfc9110#name-field-values
                 // Also, trim as optional whitespace before and after are allowed
-                value = new String(headerBuffer, read, valueLength, StandardCharsets.ISO_8859_1).trim();
+                value = StringUtil.trimRaw(headerBuffer, read, valueLength);
             } else {
                 value = "";
             }
             requestToBuild.addHeader(name, value);
             read = valueEnd + 1;
-            while (read + 2 > availableBytes) {
+            while (read + 2 > availableBytes && availableBytes > 0) {
                 if (readMoreBytes(headerBuffer) < 0) {
                     newWriter(context, requestToBuild.getVersion())
                             .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
@@ -373,12 +375,12 @@ public final class HTTPClientHandler implements Runnable {
         // Validate that the client send the host if the request is http/1.1
         // See https://www.rfc-editor.org/rfc/rfc9112#section-2.2
         if (httpRequest.getVersion() == HTTPVersion.HTTP_1_1) {
-            List<String> host = httpRequest.getHeaders("host");
-            if (host == null || host.size() > 1) {
+            String host = httpRequest.getSingleHeader("host");
+            if (host == null) {
                 newWriter(context, httpRequest.getVersion())
                         .respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN)
                         .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("Received invalid host header!");
+                        .writeBodyAndFlush("Received invalid/no host header!");
                 return false;
             }
         }
@@ -393,7 +395,7 @@ public final class HTTPClientHandler implements Runnable {
      * @throws IOException If an I/O error occurs
      */
     private ResponseStartWriter newTempWriter(ReusableClientContext context) throws IOException {
-        return new ResponseWriter(this.socket.getOutputStream(), context, HTTPVersion.HTTP_1_0);
+        return new ResponseWriter(getOutputStream(), context, HTTPVersion.HTTP_1_0);
     }
 
     /**
@@ -403,11 +405,12 @@ public final class HTTPClientHandler implements Runnable {
      * @throws IOException If an I/O error occurs
      */
     private ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
-        return new ResponseWriter(this.socket.getOutputStream(), context, version);
+        return new ResponseWriter(getOutputStream(), context, version);
     }
 
     public int readMoreBytes(byte[] target) throws IOException {
         if (target.length == availableBytes) return -1;
+        if (availableBytes == -1) return -1;
         int read = inputStream.read(target, availableBytes, target.length - availableBytes);
         if (read == -1)
             availableBytes = -1; // Cant read more bytes, but more were required. This is an invalid state, so set available bytes to -1
@@ -419,7 +422,7 @@ public final class HTTPClientHandler implements Runnable {
     public void shutdown() throws IOException {
         boolean closeSocket = this.state.startShutdown();
         if (closeSocket) {
-            this.socket.close();
+            close();
         }
     }
 
@@ -428,7 +431,7 @@ public final class HTTPClientHandler implements Runnable {
         if (this.state.isTimedOut(readTimeout, handleTimeout)) {
             this.externalTimeout = true;
             try {
-                this.socket.close();
+                close();
             } catch (IOException e) {
                 this.errorHandler.onExternalTimeoutCloseFailed(this, this.socket, e);
             }
@@ -441,5 +444,18 @@ public final class HTTPClientHandler implements Runnable {
 
     public int getRead() {
         return read;
+    }
+
+    // Overridable method for unit tests / benchmarks
+    protected OutputStream getOutputStream() throws IOException {
+        return socket.getOutputStream();
+    }
+
+    protected InputStream getInputStream() throws IOException {
+        return socket.getInputStream();
+    }
+
+    protected void close() throws IOException {
+        socket.close();
     }
 }

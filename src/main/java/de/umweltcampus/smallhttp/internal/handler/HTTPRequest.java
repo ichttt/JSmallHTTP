@@ -5,6 +5,7 @@ import de.umweltcampus.smallhttp.data.Method;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -15,7 +16,7 @@ public class HTTPRequest {
     private final URLParser urlParser;
     private final String path;
     private final HTTPVersion version;
-    private final Map<String, List<String>> headers;
+    private final Map<String, Object> headers; // Value: Either String or List<String>
     private RestBufInputStream restBufInputStream;
 
     public HTTPRequest(Method method, URLParser parser, HTTPVersion version) {
@@ -30,11 +31,25 @@ public class HTTPRequest {
         this.restBufInputStream = new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLength);
     }
 
+    @SuppressWarnings("unchecked")
     void addHeader(String name, String value) {
         assert name != null && !name.isBlank();
         assert value != null;
         // Headers are case-insensitive, so lowercase them
-        headers.computeIfAbsent(name.toLowerCase(Locale.ROOT), s -> new ArrayList<>(1)).add(value);
+        String key = name.toLowerCase(Locale.ROOT);
+        Object presentVal = headers.putIfAbsent(key, value);
+        // yes, check by reference, and not using equals on a string is correct here
+        if (presentVal != null) {
+            if (presentVal instanceof List<?>) {
+                List<String> list = (List<String>) presentVal;
+                list.add(value);
+            } else {
+                List<String> list = new ArrayList<>();
+                list.add((String) presentVal);
+                list.add(value);
+                headers.put(key, list);
+            }
+        }
     }
 
     public HTTPVersion getVersion() {
@@ -60,13 +75,13 @@ public class HTTPRequest {
     /**
      * Gets the first header for a given key.
      * @param key The lowercase key of the header
-     * @return The first set value of that header, or null if no such header is present
+     * @return The value of the header, or null if this header is absent or multiple value are present
      */
-    public String getFirstHeader(String key) {
+    public String getSingleHeader(String key) {
         assert key.toLowerCase(Locale.ROOT).equals(key);
-        List<String> strings = headers.get(key);
-        if (strings == null) return null;
-        return strings.get(0);
+        Object entry = headers.get(key);
+        if (entry instanceof String) return (String) entry;
+        return null;
     }
 
     /**
@@ -74,9 +89,13 @@ public class HTTPRequest {
      * @param key The lowercase key of the header
      * @return The values of that header, or null if no such header is present
      */
+    @SuppressWarnings("unchecked")
     public List<String> getHeaders(String key) {
         assert key.toLowerCase(Locale.ROOT).equals(key);
-        return headers.get(key);
+        Object o = headers.get(key);
+        if (o == null) return null;
+        else if (o instanceof List<?>) return (List<String>) o;
+        else return Collections.singletonList((String) o);
     }
 
     public RestBufInputStream getInputStream() {
