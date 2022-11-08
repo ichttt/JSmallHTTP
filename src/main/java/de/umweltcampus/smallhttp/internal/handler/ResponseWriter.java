@@ -9,6 +9,7 @@ import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
 import de.umweltcampus.smallhttp.response.ChunkedResponseWriter;
 import de.umweltcampus.smallhttp.response.FixedResponseBodyWriter;
+import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
@@ -109,7 +110,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException {
+    public FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws HTTPWriteException {
         if (size < 0) throw new IllegalArgumentException();
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
         this.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "");
@@ -119,7 +120,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException {
+    public ChunkedResponseWriter beginBodyWithUnknownSize() throws HTTPWriteException {
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
         if (this.requestVersion == HTTPVersion.HTTP_1_0) throw new IllegalStateException("Chunked transfer is forbidden for HTTP/1.0!");
         this.chunked = true;
@@ -130,7 +131,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public ResponseToken sendWithoutBody() throws IOException {
+    public ResponseToken sendWithoutBody() throws HTTPWriteException {
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
 
         sendHeader();
@@ -155,37 +156,45 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     }
 
     @Override
-    public void writeChunk(byte[] data) throws IOException {
+    public void writeChunk(byte[] data) throws HTTPWriteException {
         this.writeChunk(data, 0, data.length);
     }
 
     @Override
-    public void writeChunk(byte[] data, int offset, int length) throws IOException {
+    public void writeChunk(byte[] data, int offset, int length) throws HTTPWriteException {
         if (!this.startedSendingData || completed || !chunked) throw new IllegalStateException();
         assert data.length - offset >= length;
 
         // See https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
         byte[] lengthIndicator = Integer.toHexString(length).getBytes(StandardCharsets.US_ASCII);
-        this.stream.write(lengthIndicator);
-        this.stream.write(CRLF_BYTES);
-        this.stream.write(data, offset, length);
-        this.stream.write(CRLF_BYTES);
+        try {
+            this.stream.write(lengthIndicator);
+            this.stream.write(CRLF_BYTES);
+            this.stream.write(data, offset, length);
+            this.stream.write(CRLF_BYTES);
+        } catch (IOException e) {
+            throw new HTTPWriteException(e);
+        }
     }
 
     @Override
-    public ResponseToken finalizeResponse() throws IOException {
+    public ResponseToken finalizeResponse() throws HTTPWriteException {
         if (completed || !startedSendingData) throw new IllegalStateException();
 
-        if (chunked) {
-            this.stream.write(TRANSFER_ENCODING_END); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
+        try {
+            if (chunked) {
+                this.stream.write(TRANSFER_ENCODING_END); //write the last chunk, see https://www.rfc-editor.org/rfc/rfc9112#name-chunked-transfer-coding
+            }
+            this.stream.flush();
+        } catch (IOException e) {
+            throw new HTTPWriteException(e);
         }
-        this.stream.flush();
         this.completed = true;
         return ResponseTokenImpl.get();
     }
 
 
-    private void sendHeader() throws IOException {
+    private void sendHeader() throws HTTPWriteException {
         // Prepare remaining builtin headers
         byte[] dateKey = BuiltinHeaders.DATE.headerKey.asciiBytes;
         byte[] dateValue = responseDateFormatter.format().getBytes(StandardCharsets.US_ASCII);
@@ -195,23 +204,28 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         this.startedSendingData = true;
         // Start with status line (https://www.rfc-editor.org/rfc/rfc9112#name-status-line)
         OutputStream stream = this.stream;
-        this.requestVersion.writeToHeader(stream);
-        this.status.writeToHeader(stream);
-        // Continue with builtin headers and write them directly
 
-        // Date header
-        stream.write(dateKey);
-        stream.write(dateValue);
-        stream.write('\r');
-        stream.write('\n');
+        try {
+            this.requestVersion.writeToHeader(stream);
+            this.status.writeToHeader(stream);
+            // Continue with builtin headers and write them directly
 
-        // Server header
-        stream.write(serverHeader);
+            // Date header
+            stream.write(dateKey);
+            stream.write(dateValue);
+            stream.write('\r');
+            stream.write('\n');
 
-        // Write the other header bytes
-        stream.write(this.responseBuffer, 0, this.responseBufferNextIndex);
-        // End with a last CR LF to signal start of body
-        stream.write('\r');
-        stream.write('\n');
+            // Server header
+            stream.write(serverHeader);
+
+            // Write the other header bytes
+            stream.write(this.responseBuffer, 0, this.responseBufferNextIndex);
+            // End with a last CR LF to signal start of body
+            stream.write('\r');
+            stream.write('\n');
+        } catch (IOException e) {
+            throw new HTTPWriteException(e);
+        }
     }
 }

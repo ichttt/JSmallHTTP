@@ -54,8 +54,9 @@ public interface ResponseHeaderWriter {
      * In that case, the connection to the client will be forcibly closed!
      * @param size The size of the body
      * @return The new body writer
+     * @throws HTTPWriteException If the write operation fails
      */
-    FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws IOException;
+    FixedResponseBodyWriter beginBodyWithKnownSize(int size) throws HTTPWriteException;
 
     /**
      * Ends writing of the headers and begins to write the body.
@@ -69,25 +70,33 @@ public interface ResponseHeaderWriter {
      * Because of this, <strong>any exception thrown by the handler after this call can not be handled properly!</strong>
      * In that case, the connection to the client will be forcibly closed!
      * @return The new body writer
+     * @throws HTTPWriteException If the write operation fails
      */
-    ChunkedResponseWriter beginBodyWithUnknownSize() throws IOException;
+    ChunkedResponseWriter beginBodyWithUnknownSize() throws HTTPWriteException;
 
     /**
      * Sends the response to the client without any body
-     * @return The response token that must be returned to the
+     * @throws HTTPWriteException If the write operation fails
+     * @return A response token that must be returned, marking the response as complete
      */
-    ResponseToken sendWithoutBody() throws IOException;
+    ResponseToken sendWithoutBody() throws HTTPWriteException;
 
     /**
      * Ends writing of headers and writes a string to the message body and flushes the output to the client.
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
-     * @return The response token that must be returned to the
+     * @param s The string to write
+     * @return A response token that must be returned, marking the response as complete
+     * @throws HTTPWriteException If the write operation fails
      */
-    default ResponseToken writeBodyAndFlush(String s) throws IOException {
+    default ResponseToken writeBodyAndFlush(String s) throws HTTPWriteException {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
         FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
-        responseBodyWriter.getRawOutputStream().write(bytes);
+        try {
+            responseBodyWriter.getRawOutputStream().write(bytes);
+        } catch (IOException e) {
+            throw new HTTPWriteException(e);
+        }
         return responseBodyWriter.finalizeResponse();
     }
 
@@ -95,9 +104,11 @@ public interface ResponseHeaderWriter {
      * Ends writing of headers and writes an array of strings to the message body and flushes the output to the client.
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
-     * @return The response token that must be returned to the
+     * @param strings The strings to write
+     * @return A response token that must be returned, marking the response as complete
+     * @throws HTTPWriteException If the write operation fails
      */
-    default ResponseToken writeBodyAndFlush(String... strings) throws IOException {
+    default ResponseToken writeBodyAndFlush(String... strings) throws HTTPWriteException {
         byte[][] arrays = new byte[strings.length][];
         int length = 0;
         for (int i = 0; i < strings.length; i++) {
@@ -108,7 +119,11 @@ public interface ResponseHeaderWriter {
         FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(length);
         OutputStream rawOutputStream = responseBodyWriter.getRawOutputStream();
         for (byte[] array : arrays) {
-            rawOutputStream.write(array);
+            try {
+                rawOutputStream.write(array);
+            } catch (IOException e) {
+                throw new HTTPWriteException(e);
+            }
         }
         return responseBodyWriter.finalizeResponse();
     }
@@ -117,10 +132,17 @@ public interface ResponseHeaderWriter {
      * Ends writing of headers and writes a byte array to the message body and flushes the output to the client.
      * Convenience method to avoid {@link #beginBodyWithKnownSize(int)} followed by {@link FixedResponseBodyWriter#getRawOutputStream()} and {@link FixedResponseBodyWriter#finalizeResponse()}
      * This header writer becomes invalid once this is called.
+     * @param bytes The bytes to write
+     * @return A response token that must be returned, marking the response as complete
+     * @throws HTTPWriteException If the write operation fails
      */
-    default ResponseToken writeBodyAndFlush(byte[] bytes) throws IOException {
+    default ResponseToken writeBodyAndFlush(byte[] bytes) throws HTTPWriteException {
         FixedResponseBodyWriter responseBodyWriter = beginBodyWithKnownSize(bytes.length);
-        responseBodyWriter.getRawOutputStream().write(bytes);
+        try {
+            responseBodyWriter.getRawOutputStream().write(bytes);
+        } catch (IOException e) {
+            throw new HTTPWriteException(e);
+        }
         return responseBodyWriter.finalizeResponse();
     }
 }

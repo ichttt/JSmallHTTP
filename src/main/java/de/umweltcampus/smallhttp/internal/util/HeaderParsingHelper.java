@@ -4,6 +4,7 @@ import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
 import de.umweltcampus.smallhttp.internal.handler.InternalConstants;
+import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ public class HeaderParsingHelper {
     private static final byte[] URI_END_REACHED_TEXT = ("Request URI was too large, entire uri must fit into " + InternalConstants.MAX_REQUEST_TARGET_LENGTH + " bytes!").getBytes(StandardCharsets.UTF_8);
     private static final byte[] END_REACHED_TEXT = ("Header was too large, entire header must fit into " + InternalConstants.MAX_HEADER_SIZE_BYTES + " bytes!").getBytes(StandardCharsets.UTF_8);
 
-    public static void handleError(ResponseStartWriter writer, boolean inUri, int errorCode) throws IOException {
+    public static void handleError(ResponseStartWriter writer, boolean inUri, int errorCode) throws HTTPWriteException {
         if (errorCode == INVALID_CHAR_FOUND) {
             writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).addHeader(HTTPClientHandler.CONNECTION_CLOSE_HEADER).writeBodyAndFlush(INVALID_CHAR_FOUND_TEXT);
         } else if (errorCode == TOO_LARGE) {

@@ -4,6 +4,7 @@ import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.response.FixedResponseBodyWriter;
+import de.umweltcampus.smallhttp.response.HTTPWriteException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,10 +26,20 @@ public class Test {
                     return responseWriter.respond(Status.FORBIDDEN, CommonContentTypes.PLAIN).writeBodyAndFlush("Nope that's not allowed");
                 if (!Files.exists(actual))
                     return responseWriter.respond(Status.NOT_FOUND, CommonContentTypes.PLAIN).writeBodyAndFlush("Not found");
-                FileChannel channel = FileChannel.open(actual);
-                long size = channel.size();
+                FileChannel channel;
+                long size;
+                try {
+                    channel = FileChannel.open(actual);
+                    size = channel.size();
+                } catch (IOException e) {
+                    return responseWriter.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN).writeBodyAndFlush("Failed to open file!");
+                }
                 FixedResponseBodyWriter fixedResponseBodyWriter = responseWriter.respond(Status.OK, getType(request.getPath())).beginBodyWithKnownSize((int) size);
-                Channels.newInputStream(channel).transferTo(fixedResponseBodyWriter.getRawOutputStream());
+                try (InputStream stream = Channels.newInputStream(channel)) {
+                    stream.transferTo(fixedResponseBodyWriter.getRawOutputStream());
+                } catch (IOException e) {
+                    throw new HTTPWriteException(e); // already started to write request. Too late now
+                }
                 return fixedResponseBodyWriter.finalizeResponse();
             } else if (request.getPath().startsWith("/api/") && request.getMethod() == Method.PUT) {
                 InputStream stream = request.getInputStream();
@@ -41,6 +52,8 @@ public class Test {
                 } while (Files.exists(path));
                 try (OutputStream oStream = Files.newOutputStream(path)) {
                     stream.transferTo(oStream);
+                } catch (IOException e) {
+                    responseWriter.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN).writeBodyAndFlush("Failed to write image!");
                 }
                 return responseWriter.respond(Status.OK, CommonContentTypes.PLAIN).writeBodyAndFlush("/test/" + name);
             }

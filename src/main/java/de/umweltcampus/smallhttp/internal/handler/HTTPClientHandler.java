@@ -11,6 +11,7 @@ import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.internal.util.HeaderParsingHelper;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerState;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
+import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 
@@ -87,7 +88,7 @@ public final class HTTPClientHandler implements Runnable {
         }
     }
 
-    private boolean handleRequest(ReusableClientContext context) throws IOException {
+    private boolean handleRequest(ReusableClientContext context) throws IOException, HTTPWriteException {
         byte[] headerBuffer = context.headerBuffer;
 
         availableBytes = 0;
@@ -193,7 +194,7 @@ public final class HTTPClientHandler implements Runnable {
         }
     }
 
-    private HTTPRequest parseRequestLine(ReusableClientContext context) throws IOException {
+    private HTTPRequest parseRequestLine(ReusableClientContext context) throws HTTPWriteException, IOException {
         byte[] headerBuffer = context.headerBuffer;
         // Parse the request line according to https://www.rfc-editor.org/rfc/rfc9112#name-request-line
 
@@ -262,7 +263,7 @@ public final class HTTPClientHandler implements Runnable {
         return new HTTPRequest(method, parser, matchingVersion);
     }
 
-    private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws IOException {
+    private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws HTTPWriteException, IOException {
         byte[] headerBuffer = context.headerBuffer;
         while (true) {
             int nameEnd = HeaderParsingHelper.findHeaderSplit(headerBuffer, this);
@@ -313,7 +314,7 @@ public final class HTTPClientHandler implements Runnable {
         }
     }
 
-    private boolean validateStandardHeader(ReusableClientContext context, HTTPRequest httpRequest) throws IOException {
+    private boolean validateStandardHeader(ReusableClientContext context, HTTPRequest httpRequest) throws HTTPWriteException, IOException {
         List<String> contentLengthHeaders = httpRequest.getHeaders("content-length");
         // Validate that no transfer encoding header is present.
         // See https://www.rfc-editor.org/rfc/rfc9112#section-6.1 for logic requirements
