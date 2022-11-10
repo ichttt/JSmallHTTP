@@ -3,11 +3,12 @@ package de.umweltcampus.smallhttp.internal.util;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class ResponseDateFormatter {
     private static final String FORMAT = "EEE, dd MMM yyyy HH:mm:ss";
     private static final int STRING_BUILDER_SIZE = FORMAT.length() + 4; // 4: space + GMT
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(FORMAT);
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(FORMAT, Locale.ROOT);
     private final Clock clock;
 
     public ResponseDateFormatter() {

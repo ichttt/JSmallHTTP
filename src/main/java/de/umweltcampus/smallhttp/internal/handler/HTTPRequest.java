@@ -17,6 +17,7 @@ public class HTTPRequest {
     private final String path;
     private final HTTPVersion version;
     private final Map<String, Object> headers; // Value: Either String or List<String>
+    private int contentLength;
     private RestBufInputStream restBufInputStream;
 
     public HTTPRequest(Method method, URLParser parser, HTTPVersion version) {
@@ -25,9 +26,11 @@ public class HTTPRequest {
         this.path = parser.parseRequestTarget();
         this.version = version;
         this.headers = new HashMap<>();
+        this.contentLength = 0;
     }
 
     void setRestBuffer(byte[] restBuffer, int bufOffset, int bufLength, InputStream originalInputStream, int contentLength) {
+        this.contentLength = contentLength;
         this.restBufInputStream = new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLength);
     }
 
@@ -100,6 +103,10 @@ public class HTTPRequest {
 
     public RestBufInputStream getInputStream() {
         return restBufInputStream;
+    }
+
+    public int getContentLength() {
+        return this.contentLength;
     }
 
     boolean isAsteriskRequest() {
