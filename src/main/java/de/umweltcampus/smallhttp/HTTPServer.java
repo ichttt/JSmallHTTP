@@ -5,8 +5,9 @@ import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
 import de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog;
 
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class HTTPServer {
     private final int port;
-    private final ServerSocket mainSocket;
+    private final ServerSocketChannel mainSocket;
     private final ExecutorService executor;
     private final Thread mainSocketListener;
     private final Thread socketWatchdogThread;
@@ -38,7 +39,10 @@ public class HTTPServer {
     HTTPServer(HTTPServerBuilder builder) throws IOException {
         this.port = builder.getPort();
         this.errorHandler = builder.getErrorHandler();
-        this.mainSocket = new ServerSocket(port);
+        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+        serverSocketChannel.configureBlocking(true);
+        serverSocketChannel.bind(new InetSocketAddress(port));
+        this.mainSocket = serverSocketChannel;
         this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> new Thread(r, "HTTPServer port " + port + " client handler " + threadNumber.getAndIncrement()));
         this.handler = builder.getHandler();
         this.socketTimeout = builder.getSocketTimeoutMillis();
@@ -67,8 +71,8 @@ public class HTTPServer {
 
     private void listen() {
         try {
-            while (!mainSocket.isClosed()) {
-                Socket acceptedSocket = mainSocket.accept();
+            while (mainSocket.isOpen()) {
+                Socket acceptedSocket = mainSocket.accept().socket();
                 if (socketTimeout != -1) {
                     acceptedSocket.setSoTimeout(socketTimeout);
                 }

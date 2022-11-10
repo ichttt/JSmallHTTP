@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -395,7 +396,7 @@ public class HTTPClientHandler implements Runnable {
      * @throws IOException If an I/O error occurs
      */
     private ResponseStartWriter newTempWriter(ReusableClientContext context) throws IOException {
-        return new ResponseWriter(getOutputStream(), context, HTTPVersion.HTTP_1_0);
+        return new ResponseWriter(getOutputStream(), getSocketChannel(), context, HTTPVersion.HTTP_1_0);
     }
 
     /**
@@ -405,7 +406,7 @@ public class HTTPClientHandler implements Runnable {
      * @throws IOException If an I/O error occurs
      */
     private ResponseStartWriter newWriter(ReusableClientContext context, HTTPVersion version) throws IOException {
-        return new ResponseWriter(getOutputStream(), context, version);
+        return new ResponseWriter(getOutputStream(), getSocketChannel(), context, version);
     }
 
     public int readMoreBytes(byte[] target) throws IOException {
@@ -449,6 +450,10 @@ public class HTTPClientHandler implements Runnable {
     // Overridable method for unit tests / benchmarks
     protected OutputStream getOutputStream() throws IOException {
         return socket.getOutputStream();
+    }
+
+    protected SocketChannel getSocketChannel() {
+        return socket.getChannel();
     }
 
     protected InputStream getInputStream() throws IOException {

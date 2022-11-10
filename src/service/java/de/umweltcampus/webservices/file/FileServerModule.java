@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URLConnection;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,8 +56,7 @@ public class FileServerModule {
 
                 headerWriter = writer.respond(Status.OK, mime);
                 FixedResponseBodyWriter bodyWriter = headerWriter.beginBodyWithKnownSize((int) size);
-                // TODO look into socket channel (to allow direct transfer via sendfile)
-                channel.transferTo(0, size, Channels.newChannel(bodyWriter.getRawOutputStream()));
+                channel.transferTo(0, size, bodyWriter.getRawSocketChannel());
                 return bodyWriter.finalizeResponse();
             } catch (IOException e) {
                 LOGGER.error("Failed to serve file {} for path {}", resolved, path, e);

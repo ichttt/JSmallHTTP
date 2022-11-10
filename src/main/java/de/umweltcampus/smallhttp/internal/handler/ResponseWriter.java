@@ -16,6 +16,7 @@ import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, FixedResponseBodyWriter, ChunkedResponseWriter {
@@ -25,6 +26,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private static final byte[] TRANSFER_ENCODING_END = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
 
     private final OutputStream stream;
+    private final SocketChannel channel;
     private final byte[] responseBuffer;
     private final ResponseDateFormatter responseDateFormatter;
     private final HTTPVersion requestVersion;
@@ -34,8 +36,9 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private boolean completed = false;
     private boolean chunked = false;
 
-    public ResponseWriter(OutputStream stream, ReusableClientContext context, HTTPVersion requestVersion) {
+    public ResponseWriter(OutputStream stream, SocketChannel channel, ReusableClientContext context, HTTPVersion requestVersion) {
         this.stream = stream;
+        this.channel = channel;
         this.responseBuffer = context.responseBuffer;
         this.responseDateFormatter = context.responseDateFormatter;
         this.requestVersion = requestVersion;
@@ -153,6 +156,13 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         if (!this.startedSendingData || completed || chunked) throw new IllegalStateException();
 
         return this.stream;
+    }
+
+    @Override
+    public SocketChannel getRawSocketChannel() {
+        if (!this.startedSendingData || completed || chunked) throw new IllegalStateException();
+
+        return this.channel;
     }
 
     @Override
