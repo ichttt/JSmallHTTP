@@ -28,6 +28,7 @@ public abstract class BaseEndpoint {
         Set<Method> seenMethods = new HashSet<>();
         for (Method allowedMethod : allowedMethods) {
             if (allowedMethod == null) throw new IllegalArgumentException("Found null method!");
+            if (allowedMethod == Method.HEAD || allowedMethod == Method.OPTIONS) throw new IllegalArgumentException("HEAD and OPTIONS must not be in the allow list, they are handled in methods other then answerRequest!");
             if (!seenMethods.add(allowedMethod)) throw new IllegalArgumentException("Duplicate method " + allowedMethod);
         }
 
@@ -36,6 +37,7 @@ public abstract class BaseEndpoint {
         this.validMethodsString = Arrays.stream(allowedMethods).map(Enum::name).collect(Collectors.joining(", "));
     }
 
+    // Getters
     public final int getMaxBodySizeBytes() {
         return this.maxBodySizeBytes;
     }
@@ -48,12 +50,16 @@ public abstract class BaseEndpoint {
         return this.validMethodsString;
     }
 
+    // Main serving methods
     public abstract ResponseToken answerRequest(HTTPRequest request, ResponseStartWriter responseWriter) throws HTTPWriteException;
+
+    public abstract ResponseToken handleHead(HTTPRequest request, ResponseStartWriter responseStartWriter) throws HTTPWriteException;
 
     public ResponseToken handleOptions(HTTPRequest request, ResponseStartWriter responseStartWriter) throws HTTPWriteException {
         return responseStartWriter.respondWithoutContentType(Status.NO_CONTENT).addHeader(EndpointModule.ALLOWED_HEADER, getValidMethodsString()).sendWithoutBody();
     }
 
+    // Helper for error responses
     protected final ResponseToken responseError(ResponseStartWriter responseWriter, String msg, Status status) throws HTTPWriteException {
         EndpointLoggingHelper.logStatusCode(this.getClass(), msg, status);
         return responseWriter.respond(status, CommonContentTypes.PLAIN).writeBodyAndFlush(msg);

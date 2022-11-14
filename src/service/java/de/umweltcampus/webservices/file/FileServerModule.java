@@ -35,7 +35,7 @@ public class FileServerModule {
      * @param baseDirToServe The directory to serve files from.
      * @param prefixToServe The prefix to serve, e.g. <code>files/</code> to serve the file <code>text.txt</code> from <code>"/files/text.txt"</code>
      */
-    public FileServerModule(Path baseDirToServe, String prefixToServe) {
+    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy strategy) {
         if (!Files.isDirectory(baseDirToServe)) throw new IllegalArgumentException("Base dir is not a directory!");
         this.baseDirToServe = baseDirToServe;
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
@@ -50,9 +50,11 @@ public class FileServerModule {
             if (invalid) {
                 return writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Invalid path");
             }
+
             if (subPath.isBlank() || !Files.isRegularFile(resolved)) {
                 return null;
             }
+
             Method method = request.getMethod();
             if (method == Method.OPTIONS) {
                 return writer.respondWithoutContentType(Status.NO_CONTENT)
