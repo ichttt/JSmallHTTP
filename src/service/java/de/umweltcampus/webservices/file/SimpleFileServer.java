@@ -7,6 +7,6 @@ import java.nio.file.Paths;
 public class SimpleFileServer extends WebserviceBase {
 
     public SimpleFileServer() {
-        super(new FileServerModule(Paths.get("test"), ""));
+        super(null, new FileServerModule(Paths.get("test"), "", CompressionStrategy.compressAndStore(true, true)));
     }
 }

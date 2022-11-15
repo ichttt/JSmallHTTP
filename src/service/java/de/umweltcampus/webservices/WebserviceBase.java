@@ -39,7 +39,7 @@ public abstract class WebserviceBase implements RequestHandler {
             }
         }
 
-        if (this.endpointModule.handles(request)) {
+        if (this.endpointModule != null && this.endpointModule.handles(request)) {
             return this.endpointModule.handleRequest(request, responseWriter);
         }
 

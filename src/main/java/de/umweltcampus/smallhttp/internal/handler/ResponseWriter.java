@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, FixedResponseBodyWriter, ChunkedResponseWriter {
     private static final PrecomputedHeader SERVER_HEADER = new PrecomputedHeader(BuiltinHeaders.SERVER.headerKey, "JSmallHTTP");
@@ -28,7 +30,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private final OutputStream stream;
     private final SocketChannel channel;
     private final byte[] responseBuffer;
-    private final ResponseDateFormatter responseDateFormatter;
+    private final Clock clock;
     private final HTTPVersion requestVersion;
     private int responseBufferNextIndex = 0;
     private Status status = null;
@@ -40,7 +42,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         this.stream = stream;
         this.channel = channel;
         this.responseBuffer = context.responseBuffer;
-        this.responseDateFormatter = context.responseDateFormatter;
+        this.clock = context.clock;
         this.requestVersion = requestVersion;
     }
 
@@ -155,7 +157,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     public OutputStream getRawOutputStream() {
         if (!this.startedSendingData || completed || chunked) throw new IllegalStateException();
 
-        return this.stream;
+        return new NoCloseOutputStreamWrapper(this.stream);
     }
 
     @Override
@@ -207,7 +209,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     private void sendHeader() throws HTTPWriteException {
         // Prepare remaining builtin headers
         byte[] dateKey = BuiltinHeaders.DATE.headerKey.asciiBytes;
-        byte[] dateValue = responseDateFormatter.format().getBytes(StandardCharsets.US_ASCII);
+        byte[] dateValue = ResponseDateFormatter.format(LocalDateTime.now(clock)).getBytes(StandardCharsets.US_ASCII);
         byte[] serverHeader = SERVER_HEADER.asciiBytes;
 
         // Point of no return

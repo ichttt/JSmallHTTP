@@ -16,7 +16,7 @@ public class ResponseWriterTest {
     @Test
     public void testEmptyHeaderWriting() throws Exception {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, null, new ReusableClientContext(TestDateFormatter.TEST_CLOCK), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .beginBodyWithKnownSize(0)
                 .finalizeResponse();
@@ -28,7 +28,7 @@ public class ResponseWriterTest {
     @Test
     public void testSingleHeaderWriting() throws Exception {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, null, new ReusableClientContext(TestDateFormatter.TEST_CLOCK), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .beginBodyWithKnownSize(0)
@@ -41,7 +41,7 @@ public class ResponseWriterTest {
     @Test
     public void testBodyWriting() throws Exception {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, null, new ReusableClientContext(TestDateFormatter.TEST_CLOCK), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .writeBodyAndFlush("Das ist ein Test!");
@@ -53,7 +53,7 @@ public class ResponseWriterTest {
     @Test
     public void testBuilderReset() throws Exception {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ResponseWriter writer = new ResponseWriter(outputStream, new ReusableClientContext(TestDateFormatter.INSTANCE), HTTPVersion.HTTP_1_1);
+        ResponseWriter writer = new ResponseWriter(outputStream, null, new ReusableClientContext(TestDateFormatter.TEST_CLOCK), HTTPVersion.HTTP_1_1);
         writer.respond(Status.OK, CommonContentTypes.PLAIN)
                 .addHeader(ETAG, "ABCTest")
                 .resetResponseBuilder()

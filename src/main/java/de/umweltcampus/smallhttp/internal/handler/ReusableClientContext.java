@@ -2,19 +2,21 @@ package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
 
+import java.time.Clock;
+
 class ReusableClientContext {
     public final byte[] headerBuffer;
     public final byte[] responseBuffer;
-    public final ResponseDateFormatter responseDateFormatter;
+    public final Clock clock;
 
     ReusableClientContext() {
-        this(new ResponseDateFormatter());
+        this(Clock.systemUTC());
     }
 
-    ReusableClientContext(ResponseDateFormatter formatter) {
+    ReusableClientContext(Clock clock) {
         this.headerBuffer = new byte[InternalConstants.MAX_HEADER_SIZE_BYTES];
         this.responseBuffer = new byte[InternalConstants.MAX_HEADER_SIZE_BYTES];
-        this.responseDateFormatter = formatter;
+        this.clock = clock;
     }
 
     void reset() {

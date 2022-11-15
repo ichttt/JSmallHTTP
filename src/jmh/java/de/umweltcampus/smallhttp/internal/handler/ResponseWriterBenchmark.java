@@ -35,7 +35,7 @@ public class ResponseWriterBenchmark {
     @Benchmark
     public void testHeaderPerformance(Blackhole blackhole) throws Exception {
         try (BlackholeOutputStream outputStream = new BlackholeOutputStream(blackhole)) {
-            ResponseWriter writer = new ResponseWriter(outputStream, context, HTTPVersion.HTTP_1_1);
+            ResponseWriter writer = new ResponseWriter(outputStream, null, context, HTTPVersion.HTTP_1_1);
             writer.respond(Status.OK, CommonContentTypes.PLAIN)
                     .addHeader(STATIC_HEADER)
                     .addHeader(DYNAMIC_HEADER, headerTestString)
@@ -46,7 +46,7 @@ public class ResponseWriterBenchmark {
     @Benchmark
     public void testContentSendingPerformance(Blackhole blackhole) throws Exception {
         try (BlackholeOutputStream outputStream = new BlackholeOutputStream(blackhole)) {
-            ResponseWriter writer = new ResponseWriter(outputStream, context, HTTPVersion.HTTP_1_1);
+            ResponseWriter writer = new ResponseWriter(outputStream, null, context, HTTPVersion.HTTP_1_1);
             writer.respond(Status.OK, CommonContentTypes.PLAIN)
                     .writeBodyAndFlush(string1, string2, string3, string4);
         }
