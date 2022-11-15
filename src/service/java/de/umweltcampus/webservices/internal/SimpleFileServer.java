@@ -1,6 +1,8 @@
-package de.umweltcampus.webservices.file;
+package de.umweltcampus.webservices.internal;
 
 import de.umweltcampus.webservices.WebserviceBase;
+import de.umweltcampus.webservices.file.CompressionStrategy;
+import de.umweltcampus.webservices.file.FileServerModule;
 
 import java.nio.file.Paths;
 

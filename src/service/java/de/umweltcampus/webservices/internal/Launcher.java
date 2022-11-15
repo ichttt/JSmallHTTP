@@ -2,15 +2,10 @@ package de.umweltcampus.webservices.internal;
 
 import de.umweltcampus.smallhttp.HTTPServer;
 import de.umweltcampus.smallhttp.HTTPServerBuilder;
-import de.umweltcampus.webservices.ServiceProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.ServiceLoader;
-import java.util.Set;
+import java.io.IOException;
 
 public class Launcher {
     private static final Logger LOGGER;
@@ -23,7 +18,7 @@ public class Launcher {
         LOGGER.debug("Started up log4j in {} ms", (stopTime - startTime));
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         if (DEV_MODE) {
             LOGGER.warn("DEV MODE ENABLED");
         } else {
@@ -35,24 +30,17 @@ public class Launcher {
         };
         Thread.setDefaultUncaughtExceptionHandler(handler);
         Thread.currentThread().setUncaughtExceptionHandler(handler);
-
-        ServiceLoader<ServiceProvider> loader = ServiceLoader.load(ServiceProvider.class, Launcher.class.getClassLoader());
-
-        List<ServiceProvider> serviceProviders = new ArrayList<>();
-        for (ServiceProvider serviceProvider : loader) {
-            serviceProviders.add(serviceProvider);
+        try {
+            launch();
+        } catch (Exception e) {
+            LOGGER.error("Failed to start up!", e);
+            System.exit(-1); // in case some threads are already running
         }
+    }
 
-        LOGGER.info("Found {} services", serviceProviders.size());
+    private static void launch() throws IOException {
+        WebserviceManager webservices = new WebserviceManager();
 
-        for (ServiceProvider provider : serviceProviders) {
-            Set<ServiceProvider> otherProviders = new HashSet<>(serviceProviders);
-            otherProviders.remove(provider);
-            provider.initialize(otherProviders);
-        }
-
-        LOGGER.debug("Services initialized");
-
-        HTTPServer server = HTTPServerBuilder.create(8080, serviceProviders.get(0).createService()).build();
+        HTTPServer server = HTTPServerBuilder.create(8080, webservices.createFromSpec("builtin:simple_fileserver")).build();
     }
 }
