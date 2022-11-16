@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices;
+package de.umweltcampus.webservices.service;
 
 import java.util.List;
 import java.util.Map;
@@ -11,20 +11,13 @@ public interface ServiceProvider {
      */
     default void initialize(Map<String, ServiceProvider> allProviders) {}
 
-    /**
-     * Called when the startup of this service has been requested.
-     *
-     * @param serviceName The name of the service to create
-     * @return Your newly created service
-     */
-    WebserviceBase createService(String serviceName);
 
     /**
      * Gets a static list of services this provider supports.
      * The strings must only contain alphanumerical characters or '_' and must be all lowercase
      * @return A list with all the service names
      */
-    List<String> getServiceNames();
+    List<WebserviceDefinition<?>> getServiceDefinitions();
 
     /**
      * Gets the static name of this provider.

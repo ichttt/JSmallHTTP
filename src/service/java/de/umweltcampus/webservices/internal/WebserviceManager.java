@@ -1,7 +1,7 @@
 package de.umweltcampus.webservices.internal;
 
-import de.umweltcampus.webservices.ServiceProvider;
-import de.umweltcampus.webservices.WebserviceBase;
+import de.umweltcampus.webservices.service.ServiceProvider;
+import de.umweltcampus.webservices.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 

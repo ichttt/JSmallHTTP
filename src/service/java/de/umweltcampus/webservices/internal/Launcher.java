@@ -39,6 +39,9 @@ public class Launcher {
     }
 
     private static void launch() throws IOException {
+        if (DEV_MODE) {
+            System.setProperty("smallhttp.trackResponses", "true");
+        }
         WebserviceManager webservices = new WebserviceManager();
 
         HTTPServer server = HTTPServerBuilder.create(8080, webservices.createFromSpec("builtin:simple_fileserver")).build();

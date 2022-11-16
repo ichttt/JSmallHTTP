@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices;
+package de.umweltcampus.webservices.service;
 
 import de.umweltcampus.smallhttp.RequestHandler;
 import de.umweltcampus.smallhttp.data.Status;

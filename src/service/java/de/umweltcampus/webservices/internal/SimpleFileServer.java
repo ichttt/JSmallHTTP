@@ -1,6 +1,6 @@
 package de.umweltcampus.webservices.internal;
 
-import de.umweltcampus.webservices.WebserviceBase;
+import de.umweltcampus.webservices.service.WebserviceBase;
 import de.umweltcampus.webservices.file.CompressionStrategy;
 import de.umweltcampus.webservices.file.FileServerModule;
 
