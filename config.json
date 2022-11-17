@@ -1,0 +1,20 @@
+{
+  "servers":
+  [
+    {
+      "type": "real",
+      "port": "8080",
+      "service": {
+        "serviceIdentifier": "builtin:simple_fileserver",
+        "folderInfos":
+        [
+          {
+            "prefixToServe": "",
+            "pathOnDisk": "./test",
+            "precompress": true
+          }
+        ]
+      }
+    }
+  ]
+}

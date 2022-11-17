@@ -2,6 +2,13 @@ package de.umweltcampus.webservices.internal;
 
 import de.umweltcampus.smallhttp.HTTPServer;
 import de.umweltcampus.smallhttp.HTTPServerBuilder;
+import de.umweltcampus.webservices.config.BaseServiceConfig;
+import de.umweltcampus.webservices.config.RealServerConfig;
+import de.umweltcampus.webservices.config.ServerConfig;
+import de.umweltcampus.webservices.config.VirtualServerConfig;
+import de.umweltcampus.webservices.internal.config.Configuration;
+import de.umweltcampus.webservices.service.InvalidConfigValueException;
+import de.umweltcampus.webservices.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -33,7 +40,7 @@ public class Launcher {
         try {
             launch();
         } catch (Exception e) {
-            LOGGER.error("Failed to start up!", e);
+            LOGGER.fatal("Failed to start up!", e);
             System.exit(-1); // in case some threads are already running
         }
     }
@@ -42,8 +49,36 @@ public class Launcher {
         if (DEV_MODE) {
             System.setProperty("smallhttp.trackResponses", "true");
         }
-        WebserviceManager webservices = new WebserviceManager();
+        WebserviceLookup webservices = new WebserviceLookup();
 
-        HTTPServer server = HTTPServerBuilder.create(8080, webservices.createFromSpec("builtin:simple_fileserver")).build();
+        Configuration configuration;
+        try {
+            configuration = new Configuration(webservices);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read config!", e);
+        }
+
+        try {
+            startupServers(configuration, webservices);
+        } catch (InvalidConfigValueException e) {
+            throw new RuntimeException("Invalid configuration!", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to start up servers!", e);
+        }
+    }
+
+    private static void startupServers(Configuration configuration, WebserviceLookup webservices) throws IOException, InvalidConfigValueException {
+        for (ServerConfig serverConfig : configuration.getRootConfig().servers) {
+            if (serverConfig instanceof RealServerConfig realServerConfig) {
+                BaseServiceConfig service = realServerConfig.service;
+                service.validateConfig();
+                WebserviceBase webservice = webservices.getFromSpec(service.serviceIdentifier).createNew(service);
+                HTTPServer server = HTTPServerBuilder.create(realServerConfig.port, webservice).build();
+            } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
+                throw new RuntimeException("TODO");
+            } else {
+                throw new RuntimeException("Invalid configuration of type " + serverConfig.getClass());
+            }
+        }
     }
 }

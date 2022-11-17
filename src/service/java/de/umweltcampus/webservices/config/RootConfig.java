@@ -1,8 +1,8 @@
-package de.umweltcampus.webservices.internal.config;
+package de.umweltcampus.webservices.config;
 
 import java.util.List;
 
-public class RootConfig {
+public final class RootConfig {
     public final List<ServerConfig> servers;
 
     public RootConfig(List<ServerConfig> servers) {

@@ -5,11 +5,19 @@ package de.umweltcampus.webservices.service;
  */
 public class InvalidConfigValueException extends Exception {
     private final String optionName;
-    private final String message;
+    private final String detailMessage;
 
-    public InvalidConfigValueException(String optionName, String message) {
-        super("The config value " + optionName + " is invalid: " + message);
+    public InvalidConfigValueException(String optionName, String detailMessage) {
+        super("The config value " + optionName + " is invalid: " + detailMessage);
         this.optionName = optionName;
-        this.message = message;
+        this.detailMessage = detailMessage;
+    }
+
+    public String getOptionName() {
+        return optionName;
+    }
+
+    public String getDetailMessage() {
+        return detailMessage;
     }
 }

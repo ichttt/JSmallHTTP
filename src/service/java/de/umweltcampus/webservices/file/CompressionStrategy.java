@@ -9,13 +9,20 @@ public class CompressionStrategy {
     public final boolean compress;
     public final boolean validateStored;
     public final boolean compressAheadOfTime;
-    public final String[] fileEndingsToCompress;
+    private final String[] fileEndingsToCompress;
 
     private CompressionStrategy(boolean compress, boolean validateStored, boolean compressAheadOfTime, String[] fileEndingsToCompress) {
         this.compress = compress;
         this.validateStored = validateStored;
         this.compressAheadOfTime = compressAheadOfTime;
         this.fileEndingsToCompress = fileEndingsToCompress == null || fileEndingsToCompress.length == 0 ? DEFAULT_FILE_ENDINGS_TO_USE : fileEndingsToCompress;
+    }
+
+    public boolean shouldCompress(String fileName) {
+        for (String endingsToCompress : fileEndingsToCompress) {
+            if (fileName.endsWith(endingsToCompress)) return true;
+        }
+        return false;
     }
 
     /**

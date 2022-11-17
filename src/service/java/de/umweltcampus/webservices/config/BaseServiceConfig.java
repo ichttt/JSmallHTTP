@@ -7,6 +7,11 @@ import de.umweltcampus.webservices.service.InvalidConfigValueException;
  * Configuration classes will be instantiated through {@link com.google.gson.Gson#fromJson(java.io.Reader, Class)},
  */
 public class BaseServiceConfig {
+    public final String serviceIdentifier;
 
-    public void validate() throws InvalidConfigValueException {}
+    public BaseServiceConfig(String serviceIdentifier) {
+        this.serviceIdentifier = serviceIdentifier;
+    }
+
+    public void validateConfig() throws InvalidConfigValueException {}
 }

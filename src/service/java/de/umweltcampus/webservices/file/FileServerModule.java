@@ -27,7 +27,6 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,7 +70,7 @@ public class FileServerModule {
             try (Stream<Path> stream = Files.walk(baseDirToServe)) {
                 stream.forEach(path -> {
                     String fileName = path.getFileName().toString();
-                    if (Arrays.stream(compressionStrategy.fileEndingsToCompress).anyMatch(fileName::endsWith) && Files.isRegularFile(path)) {
+                    if (compressionStrategy.shouldCompress(fileName) && Files.isRegularFile(path)) {
                         Path inTmp = compressedFilesFolder.resolve(path);
                         try {
                             Files.createDirectories(inTmp.getParent());
@@ -148,7 +147,7 @@ public class FileServerModule {
             Path inCompressed = null;
             String allowedEncodings = request.getSingleHeader("accept-encoding");
             boolean shouldGzCompress = allowedEncodings != null && allowedEncodings.contains("gzip");
-            if (shouldGzCompress && compressionStrategy.compress) {
+            if (shouldGzCompress && compressionStrategy.compress && compressionStrategy.shouldCompress(subPath)) {
                 inCompressed = compressedFilesFolder.resolve(subPath);
                 try {
                     if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
