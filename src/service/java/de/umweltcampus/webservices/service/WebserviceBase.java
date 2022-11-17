@@ -16,15 +16,16 @@ public abstract class WebserviceBase implements RequestHandler {
     private static final Logger LOGGER = LogManager.getLogger(WebserviceBase.class);
     private final EndpointModule<?> endpointModule;
     private final FileServerModule[] fileServers;
-    private String name;
+    protected String name;
 
-    public WebserviceBase(EndpointModule<?> endpointModule, FileServerModule... fileServers) {
+    public WebserviceBase(String name, EndpointModule<?> endpointModule, FileServerModule... fileServers) {
+        this.name = name;
         this.endpointModule = endpointModule;
         this.fileServers = fileServers;
     }
 
-    void completeStartup(String name) {
-        this.name = name;
+    public String getName() {
+        return this.name;
     }
 
     @Override

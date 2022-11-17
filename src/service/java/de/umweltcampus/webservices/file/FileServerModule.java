@@ -53,14 +53,14 @@ public class FileServerModule {
      * @param baseDirToServe The directory to serve files from.
      * @param prefixToServe The prefix to serve, e.g. <code>files/</code> to serve the file <code>text.txt</code> from <code>"/files/text.txt"</code>
      */
-    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy) {
+    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy, String webserviceName) {
         this.compressionStrategy = compressionStrategy;
         if (!Files.isDirectory(baseDirToServe)) throw new IllegalArgumentException("Base dir is not a directory!");
         this.baseDirToServe = baseDirToServe;
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
         if (this.compressionStrategy.compress) {
             String baseFolder = Objects.requireNonNull(System.getProperty("java.io.tmpdir"));
-            compressedFilesFolder = Paths.get(baseFolder, "webservices", prefixToServe);
+            compressedFilesFolder = Paths.get(baseFolder, "webservices", webserviceName, prefixToServe);
         } else {
             compressedFilesFolder = null; // unused
         }
@@ -91,6 +91,9 @@ public class FileServerModule {
     }
 
     private static void compress(Path src, FileTime srcLastModified, Path target) throws IOException {
+        if (!Files.exists(target)) {
+            target.toFile().deleteOnExit();
+        }
         OutputStream outputStream = Files.newOutputStream(target);
         try (InputStream inputStream = Files.newInputStream(src);
              GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream)) {

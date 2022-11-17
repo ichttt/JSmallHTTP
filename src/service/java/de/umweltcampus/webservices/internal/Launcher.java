@@ -71,9 +71,13 @@ public class Launcher {
         for (ServerConfig serverConfig : configuration.getRootConfig().servers) {
             if (serverConfig instanceof RealServerConfig realServerConfig) {
                 BaseServiceConfig service = realServerConfig.service;
+                String serviceIdentifier = service.serviceIdentifier;
                 service.validateConfig();
-                WebserviceBase webservice = webservices.getFromSpec(service.serviceIdentifier).createNew(service);
+
+                WebserviceBase webservice = webservices.getFromSpec(serviceIdentifier).createNew(service, serviceIdentifier + "@" + realServerConfig.port);
                 HTTPServer server = HTTPServerBuilder.create(realServerConfig.port, webservice).build();
+
+                LOGGER.info("Started {}", webservice.getName());
             } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
                 throw new RuntimeException("TODO");
             } else {
