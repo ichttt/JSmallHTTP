@@ -13,6 +13,8 @@ import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.webservices.internal.brotli.BrotliCompressor;
+import de.umweltcampus.webservices.internal.brotli.BrotliLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -39,6 +41,7 @@ public class FileServerModule {
     private static final Logger LOGGER = LogManager.getLogger(FileServerModule.class);
     private static final PrecomputedHeader ALLOW_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Stream.of(Method.OPTIONS, Method.GET, Method.HEAD).map(Enum::name).collect(Collectors.joining(", ")));
     private static final PrecomputedHeader CONTENT_ENCODING_GZIP = new PrecomputedHeader(new PrecomputedHeaderKey("Content-Encoding"), "gzip");
+    private static final PrecomputedHeader CONTENT_ENCODING_BROTLI = new PrecomputedHeader(new PrecomputedHeaderKey("Content-Encoding"), "br");
     private static final PrecomputedHeaderKey LAST_MODIFIED = new PrecomputedHeaderKey("Last-Modified");
     private static final ZoneId GMT = ZoneId.of("GMT");
     private final Path baseDirToServe;
@@ -67,14 +70,20 @@ public class FileServerModule {
         if (this.compressionStrategy.compressAheadOfTime) {
             assert compressedFilesFolder != null;
             AtomicInteger processedFiles = new AtomicInteger(0);
+            BrotliCompressor brotli = BrotliLoader.getBrotliCompressor();
             try (Stream<Path> stream = Files.walk(baseDirToServe)) {
                 stream.forEach(path -> {
                     String fileName = path.getFileName().toString();
                     if (compressionStrategy.shouldCompress(fileName) && Files.isRegularFile(path)) {
-                        Path inTmp = compressedFilesFolder.resolve(path);
+                        Path inTmpGz = compressedFilesFolder.resolve(path + ".gz");
+                        Path inTmpBr = compressedFilesFolder.resolve(path + ".br");
                         try {
-                            Files.createDirectories(inTmp.getParent());
-                            compress(path, Files.getLastModifiedTime(path), inTmp);
+                            Files.createDirectories(inTmpGz.getParent());
+                            FileTime lastModifiedTime = Files.getLastModifiedTime(path);
+                            compress(path, lastModifiedTime, inTmpGz);
+                            if (brotli != null) {
+                                compressBrotli(path, brotli, lastModifiedTime, inTmpBr);
+                            }
                         } catch (IOException e) {
                             LOGGER.warn("Failed to compress file {}", path, e);
                         }
@@ -98,6 +107,17 @@ public class FileServerModule {
         try (InputStream inputStream = Files.newInputStream(src);
              GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream)) {
             inputStream.transferTo(gzipOutputStream);
+        }
+        Files.setLastModifiedTime(target, srcLastModified);
+    }
+
+    private static void compressBrotli(Path src, BrotliCompressor compressor, FileTime srcLastModified, Path target) throws IOException {
+        if (!Files.exists(target)) {
+            target.toFile().deleteOnExit();
+        }
+        try (InputStream inputStream = Files.newInputStream(src);
+             OutputStream brOutputStream = compressor.getCompressingOutputStream(target)) {
+            inputStream.transferTo(brOutputStream);
         }
         Files.setLastModifiedTime(target, srcLastModified);
     }
@@ -149,23 +169,37 @@ public class FileServerModule {
 
             Path inCompressed = null;
             String allowedEncodings = request.getSingleHeader("accept-encoding");
-            boolean shouldGzCompress = allowedEncodings != null && allowedEncodings.contains("gzip");
-            if (shouldGzCompress && compressionStrategy.compress && compressionStrategy.shouldCompress(subPath)) {
-                inCompressed = compressedFilesFolder.resolve(subPath);
-                try {
-                    if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
-                        Object lock = locks.computeIfAbsent(inCompressed, ignored -> new Object());
-                        synchronized (lock) {
-                            // evaluate the condition again, maybe someone else already compressed while we waited for the lock
-                            if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
-                                compress(resolved, srcLastModifiedTime, inCompressed);
-                                locks.remove(inCompressed);
+            boolean shouldBrCompress = false;
+            boolean shouldGzCompress = false;
+            if (allowedEncodings != null && compressionStrategy.compress && compressionStrategy.shouldCompress(subPath)) {
+                shouldBrCompress = allowedEncodings.contains("br");
+                shouldGzCompress = allowedEncodings.contains("gzip");
+                BrotliCompressor brotli = null;
+                if (shouldBrCompress) {
+                    brotli = BrotliLoader.getBrotliCompressor();
+                    if (brotli == null) shouldBrCompress = false;
+                }
+                if (shouldGzCompress || shouldBrCompress) {
+                    inCompressed = compressedFilesFolder.resolve(subPath + (brotli != null ? ".br" : ".gz"));
+                    try {
+                        if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
+                            Object lock = locks.computeIfAbsent(inCompressed, ignored -> new Object());
+                            synchronized (lock) {
+                                // evaluate the condition again, maybe someone else already compressed while we waited for the lock
+                                if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
+                                    if (brotli != null) {
+                                        compressBrotli(resolved, brotli, srcLastModifiedTime, inCompressed);
+                                    } else {
+                                        compress(resolved, srcLastModifiedTime, inCompressed);
+                                    }
+                                    locks.remove(inCompressed);
+                                }
                             }
                         }
+                    } catch (IOException e) {
+                        LOGGER.warn("Failed to compress file {}", resolved);
+                        inCompressed = null;
                     }
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to compress file {}", resolved);
-                    inCompressed = null;
                 }
             }
 
@@ -174,7 +208,7 @@ public class FileServerModule {
                 long size = channel.size();
                 headerWriter = writer.respond(Status.OK, mime);
                 if (inCompressed != null) {
-                    headerWriter.addHeader(CONTENT_ENCODING_GZIP);
+                    headerWriter.addHeader(shouldBrCompress ? CONTENT_ENCODING_BROTLI : CONTENT_ENCODING_GZIP);
                 }
                 headerWriter.addHeader(LAST_MODIFIED, lastModified);
 
