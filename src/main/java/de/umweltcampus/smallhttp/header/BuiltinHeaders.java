@@ -1,6 +1,6 @@
 package de.umweltcampus.smallhttp.header;
 
-import de.umweltcampus.smallhttp.internal.util.StringUtil;
+import de.umweltcampus.smallhttp.util.StringUtil;
 
 public enum BuiltinHeaders {
     // Handled by sendHeader

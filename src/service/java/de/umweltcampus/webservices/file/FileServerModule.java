@@ -1,18 +1,18 @@
 package de.umweltcampus.webservices.file;
 
+import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.BuiltinHeaders;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequest;
-import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
 import de.umweltcampus.smallhttp.response.FixedResponseBodyWriter;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
 import de.umweltcampus.webservices.internal.brotli.BrotliCompressor;
 import de.umweltcampus.webservices.internal.brotli.BrotliLoader;
 import org.apache.logging.log4j.LogManager;

@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.base;
 
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.internal.handler.DefaultErrorHandler;

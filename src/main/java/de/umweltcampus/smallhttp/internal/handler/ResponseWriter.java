@@ -6,13 +6,13 @@ import de.umweltcampus.smallhttp.header.BuiltinHeaders;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
 import de.umweltcampus.smallhttp.response.ChunkedResponseWriter;
 import de.umweltcampus.smallhttp.response.FixedResponseBodyWriter;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
 
 import java.io.IOException;
 import java.io.OutputStream;

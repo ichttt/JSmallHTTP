@@ -2,6 +2,8 @@ package de.umweltcampus.webservices.internal.builtin;
 
 import de.umweltcampus.webservices.file.CompressionStrategy;
 import de.umweltcampus.webservices.file.FileServerModule;
+import de.umweltcampus.webservices.internal.builtin.config.FolderInfo;
+import de.umweltcampus.webservices.internal.builtin.config.SimpleFileServerConfig;
 import de.umweltcampus.webservices.service.WebserviceBase;
 
 import java.nio.file.Paths;

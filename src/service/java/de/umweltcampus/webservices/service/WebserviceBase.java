@@ -1,9 +1,9 @@
 package de.umweltcampus.webservices.service;
 
-import de.umweltcampus.smallhttp.RequestHandler;
+import de.umweltcampus.smallhttp.base.HTTPRequest;
+import de.umweltcampus.smallhttp.base.RequestHandler;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequest;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;

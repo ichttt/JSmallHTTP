@@ -14,10 +14,14 @@ java {
 
 repositories {
     mavenCentral()
+    mavenLocal()
 }
 
 sourceSets {
     service
+    launcher {
+        runtimeClasspath += sourceSets.service.runtimeClasspath
+    }
 }
 
 dependencies {
@@ -29,8 +33,9 @@ dependencies {
     serviceRuntimeOnly group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
     serviceImplementation group: 'com.google.code.gson', name: 'gson', version: '2.10'
 
-    serviceImplementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.0'
-    serviceRuntimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-linux-x86_64', version: '1.8.0'
+    // TODO switch to official version once https://github.com/hyperxpro/Brotli4j/issues/24 is fixed
+    serviceRuntimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-linux-x86_64', version: '1.8.15'
+    serviceImplementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.15'
 }
 
 jmh {

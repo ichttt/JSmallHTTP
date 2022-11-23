@@ -1,9 +1,7 @@
-package de.umweltcampus.smallhttp.internal.util;
+package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
-import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
-import de.umweltcampus.smallhttp.internal.handler.InternalConstants;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 

@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.internal.builtin;
+package de.umweltcampus.webservices.internal.builtin.config;
 
 public class FolderInfo {
     public final String prefixToServe;

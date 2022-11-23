@@ -1,6 +1,5 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.base;
 
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequest;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;

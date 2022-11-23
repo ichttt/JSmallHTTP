@@ -1,5 +1,6 @@
 package de.umweltcampus.webservices.internal.builtin;
 
+import de.umweltcampus.webservices.internal.builtin.config.SimpleFileServerConfig;
 import de.umweltcampus.webservices.service.ServiceProvider;
 import de.umweltcampus.webservices.service.WebserviceDefinition;
 

@@ -1,7 +1,7 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.base;
 
 import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequest;
+import de.umweltcampus.smallhttp.internal.handler.HTTPRequestImpl;
 
 import java.net.Socket;
 import java.util.concurrent.RejectedExecutionException;
@@ -49,7 +49,7 @@ public interface ErrorHandler {
      * @param e The exception thrown
      * @return True if the handler is allowed to keep the connection alive, False otherwise. If unsure, return false.
      */
-    boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequest request, Socket socket, Exception e);
+    boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequestImpl request, Socket socket, Exception e);
 
     /**
      * Called when the {@link de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog} wants to terminate a connection because the timeout was exceeded but the operation fails

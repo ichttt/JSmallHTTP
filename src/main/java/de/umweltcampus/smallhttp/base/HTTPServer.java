@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp;
+package de.umweltcampus.smallhttp.base;
 
 import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
@@ -8,7 +8,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 

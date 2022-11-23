@@ -1,20 +1,19 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
-import de.umweltcampus.smallhttp.ErrorHandler;
-import de.umweltcampus.smallhttp.RequestHandler;
+import de.umweltcampus.smallhttp.base.ErrorHandler;
+import de.umweltcampus.smallhttp.base.RequestHandler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.internal.util.HeaderParsingHelper;
-import de.umweltcampus.smallhttp.internal.util.StringUtil;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerState;
 import de.umweltcampus.smallhttp.internal.watchdog.ClientHandlerTracker;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.smallhttp.util.StringUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -105,7 +104,7 @@ public class HTTPClientHandler implements Runnable {
             // We are in shutdown - Don't send any response and signal not to keep alive
             return false;
         }
-        HTTPRequest httpRequest = parseRequestLine(context);
+        HTTPRequestImpl httpRequest = parseRequestLine(context);
         if (httpRequest == null) {
             ResponseTokenImpl.clearTracking(true);
             return false; // An error occurred while parsing the status line. This means also an error was already returned
@@ -185,7 +184,7 @@ public class HTTPClientHandler implements Runnable {
         return keepConnectionAlive(httpRequest);
     }
 
-    private boolean keepConnectionAlive(HTTPRequest httpRequest) {
+    private boolean keepConnectionAlive(HTTPRequestImpl httpRequest) {
         String connection = httpRequest.getSingleHeader("connection");
         if ("close".equals(connection)) {
             return false;
@@ -197,7 +196,7 @@ public class HTTPClientHandler implements Runnable {
         }
     }
 
-    private HTTPRequest parseRequestLine(ReusableClientContext context) throws HTTPWriteException, IOException {
+    private HTTPRequestImpl parseRequestLine(ReusableClientContext context) throws HTTPWriteException, IOException {
         byte[] headerBuffer = context.headerBuffer;
         // Parse the request line according to https://www.rfc-editor.org/rfc/rfc9112#name-request-line
 
@@ -263,10 +262,10 @@ public class HTTPClientHandler implements Runnable {
             return null;
         }
         read += 10;
-        return new HTTPRequest(method, parser, matchingVersion);
+        return new HTTPRequestImpl(method, parser, matchingVersion);
     }
 
-    private boolean parseHeaders(ReusableClientContext context, HTTPRequest requestToBuild) throws HTTPWriteException, IOException {
+    private boolean parseHeaders(ReusableClientContext context, HTTPRequestImpl requestToBuild) throws HTTPWriteException, IOException {
         byte[] headerBuffer = context.headerBuffer;
         while (true) {
             int nameEnd = HeaderParsingHelper.findHeaderSplit(headerBuffer, this);
@@ -317,7 +316,7 @@ public class HTTPClientHandler implements Runnable {
         }
     }
 
-    private boolean validateStandardHeader(ReusableClientContext context, HTTPRequest httpRequest) throws HTTPWriteException, IOException {
+    private boolean validateStandardHeader(ReusableClientContext context, HTTPRequestImpl httpRequest) throws HTTPWriteException, IOException {
         List<String> contentLengthHeaders = httpRequest.getHeaders("content-length");
         // Validate that no transfer encoding header is present.
         // See https://www.rfc-editor.org/rfc/rfc9112#section-6.1 for logic requirements

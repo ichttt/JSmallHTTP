@@ -17,7 +17,7 @@ public class WebserviceLookup {
     private final Map<String, ServiceProvider> serviceProviders = new TreeMap<>(String::compareTo);
 
     public WebserviceLookup() {
-        ServiceLoader<ServiceProvider> loader = ServiceLoader.load(ServiceProvider.class, Launcher.class.getClassLoader());
+        ServiceLoader<ServiceProvider> loader = ServiceLoader.load(WebserviceLookup.class.getModule().getLayer(), ServiceProvider.class);
 
         for (ServiceProvider currentProvider : loader) {
             String providerName = currentProvider.getProviderName();

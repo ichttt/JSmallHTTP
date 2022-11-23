@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp.internal.util;
+package de.umweltcampus.smallhttp.util;
 
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;

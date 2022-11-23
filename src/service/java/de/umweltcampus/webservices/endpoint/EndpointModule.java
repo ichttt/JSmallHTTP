@@ -1,17 +1,20 @@
 package de.umweltcampus.webservices.endpoint;
 
+import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequest;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class EndpointModule<T extends BaseEndpoint> {
     public static final PrecomputedHeaderKey ALLOWED_HEADER = new PrecomputedHeaderKey("Allow");

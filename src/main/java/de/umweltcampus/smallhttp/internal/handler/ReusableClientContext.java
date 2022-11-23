@@ -1,7 +1,5 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
-import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
-
 import java.time.Clock;
 
 class ReusableClientContext {

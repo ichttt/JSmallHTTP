@@ -1,8 +1,8 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
-import de.umweltcampus.smallhttp.HTTPServer;
-import de.umweltcampus.smallhttp.HTTPServerBuilder;
-import de.umweltcampus.smallhttp.RequestHandler;
+import de.umweltcampus.smallhttp.base.HTTPServer;
+import de.umweltcampus.smallhttp.base.HTTPServerBuilder;
+import de.umweltcampus.smallhttp.base.RequestHandler;
 import de.umweltcampus.smallhttp.data.Method;
 import de.umweltcampus.smallhttp.data.Status;
 import de.umweltcampus.smallhttp.header.CommonContentTypes;

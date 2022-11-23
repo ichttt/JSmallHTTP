@@ -1,10 +1,9 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
-import de.umweltcampus.smallhttp.internal.util.ResponseDateFormatter;
+import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 

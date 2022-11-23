@@ -1,11 +1,12 @@
-package de.umweltcampus.webservices.internal;
+package de.umweltcampus.webservices.internal.loader;
 
-import de.umweltcampus.smallhttp.HTTPServer;
-import de.umweltcampus.smallhttp.HTTPServerBuilder;
+import de.umweltcampus.smallhttp.base.HTTPServer;
+import de.umweltcampus.smallhttp.base.HTTPServerBuilder;
 import de.umweltcampus.webservices.config.BaseServiceConfig;
 import de.umweltcampus.webservices.config.RealServerConfig;
 import de.umweltcampus.webservices.config.ServerConfig;
 import de.umweltcampus.webservices.config.VirtualServerConfig;
+import de.umweltcampus.webservices.internal.WebserviceLookup;
 import de.umweltcampus.webservices.internal.config.Configuration;
 import de.umweltcampus.webservices.service.InvalidConfigValueException;
 import de.umweltcampus.webservices.service.WebserviceBase;
@@ -14,18 +15,18 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
-public class Launcher {
+public class Loader {
     private static final Logger LOGGER;
     private static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
 
     static {
         long startTime = System.currentTimeMillis();
-        LOGGER = LogManager.getLogger(Launcher.class);
+        LOGGER = LogManager.getLogger(Loader.class);
         long stopTime = System.currentTimeMillis();
         LOGGER.debug("Started up log4j in {} ms", (stopTime - startTime));
     }
 
-    public static void main(String[] args) {
+    public static void init() {
         if (DEV_MODE) {
             LOGGER.warn("DEV MODE ENABLED");
         } else {
@@ -37,18 +38,11 @@ public class Launcher {
         };
         Thread.setDefaultUncaughtExceptionHandler(handler);
         Thread.currentThread().setUncaughtExceptionHandler(handler);
-        try {
-            launch();
-        } catch (Exception e) {
-            LOGGER.fatal("Failed to start up!", e);
-            System.exit(-1); // in case some threads are already running
-        }
-    }
 
-    private static void launch() throws IOException {
         if (DEV_MODE) {
             System.setProperty("smallhttp.trackResponses", "true");
         }
+
         WebserviceLookup webservices = new WebserviceLookup();
 
         Configuration configuration;

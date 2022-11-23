@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.internal.builtin;
+package de.umweltcampus.webservices.internal.builtin.config;
 
 import de.umweltcampus.webservices.config.BaseServiceConfig;
 import de.umweltcampus.webservices.service.InvalidConfigValueException;

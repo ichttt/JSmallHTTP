@@ -1,6 +1,6 @@
 package de.umweltcampus.smallhttp.internal.watchdog;
 
-import de.umweltcampus.smallhttp.HTTPServer;
+import de.umweltcampus.smallhttp.base.HTTPServer;
 
 public class SocketWatchdog implements Runnable {
     private final int totalReadTimeout;

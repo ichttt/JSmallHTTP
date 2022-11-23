@@ -1,6 +1,6 @@
 package de.umweltcampus.smallhttp.data;
 
-import de.umweltcampus.smallhttp.internal.util.StringUtil;
+import de.umweltcampus.smallhttp.util.StringUtil;
 
 import java.io.IOException;
 import java.io.OutputStream;

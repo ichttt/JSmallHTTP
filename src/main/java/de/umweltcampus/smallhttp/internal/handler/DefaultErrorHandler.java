@@ -1,7 +1,7 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
-import de.umweltcampus.smallhttp.ErrorHandler;
-import de.umweltcampus.smallhttp.HTTPServer;
+import de.umweltcampus.smallhttp.base.ErrorHandler;
+import de.umweltcampus.smallhttp.base.HTTPServer;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 
 import java.io.IOException;
@@ -49,7 +49,7 @@ public class DefaultErrorHandler implements ErrorHandler {
     }
 
     @Override
-    public boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequest request, Socket socket, Exception e) {
+    public boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequestImpl request, Socket socket, Exception e) {
         if (e instanceof HTTPWriteException && e.getCause() instanceof SocketException) return false; // ignore
         e.printStackTrace();
         return false;

@@ -1,5 +1,6 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
+import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
 
@@ -11,7 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class HTTPRequest {
+public class HTTPRequestImpl implements HTTPRequest {
     private final Method method;
     private final URLParser urlParser;
     private final String path;
@@ -20,7 +21,7 @@ public class HTTPRequest {
     private int contentLength;
     private RestBufInputStream restBufInputStream;
 
-    public HTTPRequest(Method method, URLParser parser, HTTPVersion version) {
+    public HTTPRequestImpl(Method method, URLParser parser, HTTPVersion version) {
         this.method = method;
         this.urlParser = parser;
         this.path = parser.parseRequestTarget();
@@ -55,14 +56,17 @@ public class HTTPRequest {
         }
     }
 
+    @Override
     public HTTPVersion getVersion() {
         return version;
     }
 
+    @Override
     public Method getMethod() {
         return method;
     }
 
+    @Override
     public String getPath() {
         return path;
     }
@@ -71,6 +75,7 @@ public class HTTPRequest {
      * Gets the URL query parameters, parsing them on the first call to this method
      * @return A map with the key-value pairs of the parameters. The order of items is preserved
      */
+    @Override
     public Map<String, String> getQueryParameters() {
         return urlParser.parseOrGetQuery();
     }
@@ -80,6 +85,7 @@ public class HTTPRequest {
      * @param key The lowercase key of the header
      * @return The value of the header, or null if this header is absent or multiple value are present
      */
+    @Override
     public String getSingleHeader(String key) {
         assert key.toLowerCase(Locale.ROOT).equals(key);
         Object entry = headers.get(key);
@@ -92,6 +98,7 @@ public class HTTPRequest {
      * @param key The lowercase key of the header
      * @return The values of that header, or null if no such header is present
      */
+    @Override
     @SuppressWarnings("unchecked")
     public List<String> getHeaders(String key) {
         assert key.toLowerCase(Locale.ROOT).equals(key);
@@ -101,10 +108,12 @@ public class HTTPRequest {
         else return Collections.singletonList((String) o);
     }
 
+    @Override
     public RestBufInputStream getInputStream() {
         return restBufInputStream;
     }
 
+    @Override
     public int getContentLength() {
         return this.contentLength;
     }
