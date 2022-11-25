@@ -68,7 +68,7 @@ public class Loader {
                 String serviceIdentifier = service.serviceIdentifier;
                 service.validateConfig();
 
-                WebserviceBase webservice = webservices.getFromSpec(serviceIdentifier).createNew(service, serviceIdentifier + "@" + realServerConfig.port);
+                WebserviceBase webservice = webservices.getFromSpec(serviceIdentifier).createNew(service, serviceIdentifier + "-" + realServerConfig.port);
                 HTTPServer server = HTTPServerBuilder.create(realServerConfig.port, webservice).build();
 
                 LOGGER.info("Started {}", webservice.getName());
