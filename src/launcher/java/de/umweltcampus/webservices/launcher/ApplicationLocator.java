@@ -12,19 +12,19 @@ import java.util.stream.Stream;
 
 public class ApplicationLocator {
     private static final String LIBRARY_PATH = System.getProperty("webservices.library_path", "./libs/");
-    private static final String MODULES_PATH = System.getProperty("webservices.library_path", "./modules/");
+    private static final String MODULES_PATH = System.getProperty("webservices.library_path", "./plugins/");
 
 
-    public static Path[] findPossibleLibraryPaths() throws IOException {
-        return list(LIBRARY_PATH).toArray(Path[]::new);
+    public static List<Path> findPossibleLibraryPaths() throws IOException {
+        return list(LIBRARY_PATH);
     }
 
-    public static Path[] findPossibleModulePaths() throws IOException {
+    public static List<Path> findPossibleModulePaths() throws IOException {
         List<Path> fromDir = list(MODULES_PATH);
         List<Path> allPaths = new ArrayList<>(fromDir);
         // Add classpath modules
         allPaths.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).map(Paths::get).filter(Files::exists).toList());
-        return allPaths.toArray(Path[]::new);
+        return allPaths;
     }
 
     private static List<Path> list(String base) throws IOException {
