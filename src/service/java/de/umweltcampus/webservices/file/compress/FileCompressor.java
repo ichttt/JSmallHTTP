@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.file;
+package de.umweltcampus.webservices.file.compress;
 
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;

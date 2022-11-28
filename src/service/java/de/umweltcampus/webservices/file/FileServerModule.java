@@ -13,6 +13,8 @@ import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
+import de.umweltcampus.webservices.file.compress.CompressionStrategy;
+import de.umweltcampus.webservices.file.compress.FileCompressor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -26,6 +28,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,14 +40,19 @@ public class FileServerModule {
     private final Path baseDirToServe;
     private final String prefixToServe;
     private final FileCompressor compressor;
+    private final BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder;
 
     /**
      * Creates a new file serving module that sends files from the specified folder to the client if the request starts with the specified prefix.
      *
      * @param baseDirToServe The directory to serve files from.
      * @param prefixToServe The prefix to serve, e.g. <code>files/</code> to serve the file <code>text.txt</code> from <code>"/files/text.txt"</code>
+     * @param compressionStrategy The strategy that tells the module how to handle compression for different files
+     * @param webserviceName The name of the webservice this module is being created for
+     * @param additionalHeaderAdder A consumer that allows the webservice to add additional headers such as Cache-Control
      */
-    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy, String webserviceName) {
+    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy, String webserviceName, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
+        this.additionalHeaderAdder = additionalHeaderAdder;
         if (!Files.isDirectory(baseDirToServe)) throw new IllegalArgumentException("Base dir is not a directory!");
         this.baseDirToServe = baseDirToServe;
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
@@ -114,6 +122,10 @@ public class FileServerModule {
             if (compressor != null) {
                 resolved = compressor.getPathInCompressed(allowedEncodings, subPath, resolved, srcLastModifiedTime, headerWriter);
             }
+            if (this.additionalHeaderAdder != null) {
+                this.additionalHeaderAdder.accept(request, headerWriter);
+            }
+
             return sendFile(resolved, method, headerWriter);
         }
         return null;

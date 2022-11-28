@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.file;
+package de.umweltcampus.webservices.file.compress;
 
 /**
  * Defines a strategy that determines how files are compressed before they are sent over the wire

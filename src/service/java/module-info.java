@@ -5,6 +5,7 @@ module de.umweltcampus.webservices {
     exports de.umweltcampus.webservices.config;
     exports de.umweltcampus.webservices.endpoint;
     exports de.umweltcampus.webservices.file;
+    exports de.umweltcampus.webservices.file.compress;
     exports de.umweltcampus.webservices.service;
     // for config deserialization
     exports de.umweltcampus.webservices.internal.builtin.config to com.google.gson;
