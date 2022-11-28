@@ -6,7 +6,7 @@ import de.umweltcampus.smallhttp.header.CommonContentTypes;
 /**
  * An interface that serves as the entry point to sending a response to a client.
  */
-public interface ResponseStartWriter {
+public interface ResponseStartWriter extends ResettableWriter {
 
     /**
      * Begins a response by setting the response status.

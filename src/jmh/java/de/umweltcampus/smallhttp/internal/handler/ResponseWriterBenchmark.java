@@ -13,8 +13,8 @@ import org.openjdk.jmh.infra.Blackhole;
 
 @State(Scope.Thread)
 public class ResponseWriterBenchmark {
-    private static final PrecomputedHeader STATIC_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Testabc"), "Valueabc");
-    private static final PrecomputedHeaderKey DYNAMIC_HEADER = new PrecomputedHeaderKey("Dynamicabc");
+    private static final PrecomputedHeader STATIC_HEADER = PrecomputedHeader.create("Testabc", "Valueabc");
+    private static final PrecomputedHeaderKey DYNAMIC_HEADER = PrecomputedHeaderKey.create("Dynamicabc");
     private ReusableClientContext context;
     private String headerTestString;
     private String string1;

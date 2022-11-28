@@ -1,6 +1,7 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.base.ErrorHandler;
+import de.umweltcampus.smallhttp.base.HTTPServer;
 import de.umweltcampus.smallhttp.base.RequestHandler;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
@@ -28,14 +29,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class HTTPClientHandler implements Runnable {
-    public static final PrecomputedHeader CONNECTION_CLOSE_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Connection"), "close");
+    public static final PrecomputedHeader CONNECTION_CLOSE_HEADER = PrecomputedHeader.create(PrecomputedHeaderKey.create("Connection"), "close");
     private static final ThreadLocal<ReusableClientContext> CONTEXT_THREAD_LOCAL = ThreadLocal.withInitial(ReusableClientContext::new);
-    private static final PrecomputedHeader ALLOW_NO_TRACE_CONNECT_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).filter(method -> method != Method.TRACE && method != Method.CONNECT).map(Enum::name).collect(Collectors.joining(", ")));
-    private static final PrecomputedHeader ALLOW_ALL_HEADER = new PrecomputedHeader(new PrecomputedHeaderKey("Allow"), Arrays.stream(Method.values()).map(Enum::name).collect(Collectors.joining(", ")));
+    private static final PrecomputedHeader ALLOW_NO_TRACE_CONNECT_HEADER = PrecomputedHeader.create("Allow", Arrays.stream(Method.values()).filter(method -> method != Method.TRACE && method != Method.CONNECT).map(Enum::name).collect(Collectors.joining(", ")));
+    private static final PrecomputedHeader ALLOW_ALL_HEADER = PrecomputedHeader.create("Allow", Arrays.stream(Method.values()).map(Enum::name).collect(Collectors.joining(", ")));
     private final ClientHandlerState state = new ClientHandlerState();
     private final Socket socket;
     private final ErrorHandler errorHandler;
     private final RequestHandler handler;
+    private final HTTPServer server;
     private final ClientHandlerTracker tracker;
     private final boolean allowTraceConnect;
     private final boolean builtinServerWideOptions;
@@ -45,10 +47,18 @@ public class HTTPClientHandler implements Runnable {
     private int availableBytes;
     private volatile boolean externalTimeout = false;
 
-    public HTTPClientHandler(Socket socket, ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker, boolean allowTraceConnect, boolean builtinServerWideOptions, int maxBodyLength) {
+    public HTTPClientHandler(Socket socket,
+                             ErrorHandler errorHandler,
+                             RequestHandler handler,
+                             HTTPServer server,
+                             ClientHandlerTracker tracker,
+                             boolean allowTraceConnect,
+                             boolean builtinServerWideOptions,
+                             int maxBodyLength) {
         this.socket = socket;
         this.errorHandler = errorHandler;
         this.handler = handler;
+        this.server = server;
         this.tracker = tracker;
         this.allowTraceConnect = allowTraceConnect;
         this.builtinServerWideOptions = builtinServerWideOptions;
@@ -75,10 +85,10 @@ public class HTTPClientHandler implements Runnable {
         } catch (SocketException e) {
             // If this is caused by an external timeout, we don't need to handle this, as the exception is expected
             if (!externalTimeout) {
-                this.errorHandler.onClientHandlerInternalException(this, socket, e);
+                this.errorHandler.onClientHandlerInternalException(this.server, socket, e);
             }
         } catch (Exception e) {
-            this.errorHandler.onClientHandlerInternalException(this, socket, e);
+            this.errorHandler.onClientHandlerInternalException(this.server, socket, e);
         } finally {
             ResponseTokenImpl.clearTracking(false);
             try {
@@ -170,8 +180,12 @@ public class HTTPClientHandler implements Runnable {
             if (!ResponseTokenImpl.validate(token))
                 throw new RuntimeException("Invalid token returned from handler!");
         } catch (Exception e) {
-            if (!this.errorHandler.onResponseHandlerException(this, httpRequest, socket, e)) {
+            ResponseToken token = this.errorHandler.onResponseHandlerException(this.server, httpRequest, socket, e);
+            if (token == null) {
                 return false;
+            } else {
+                if (!ResponseTokenImpl.validate(token))
+                    throw new RuntimeException("Invalid token returned from error handler!");
             }
         }
 
@@ -433,7 +447,7 @@ public class HTTPClientHandler implements Runnable {
             try {
                 close();
             } catch (IOException e) {
-                this.errorHandler.onExternalTimeoutCloseFailed(this, this.socket, e);
+                this.errorHandler.onExternalTimeoutCloseFailed(this.server, this.socket, e);
             }
         }
     }

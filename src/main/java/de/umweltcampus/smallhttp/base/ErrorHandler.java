@@ -1,7 +1,6 @@
 package de.umweltcampus.smallhttp.base;
 
-import de.umweltcampus.smallhttp.internal.handler.HTTPClientHandler;
-import de.umweltcampus.smallhttp.internal.handler.HTTPRequestImpl;
+import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.net.Socket;
 import java.util.concurrent.RejectedExecutionException;
@@ -35,27 +34,27 @@ public interface ErrorHandler {
 
     /**
      * Called when a connection listener thread crashes due to an internal exception
-     * @param handler The handler that crashed
+     * @param server The server which owns the handler that crashed
      * @param socket The socket that was being handled
      * @param e The exception thrown
      */
-    void onClientHandlerInternalException(HTTPClientHandler handler, Socket socket, Exception e);
+    void onClientHandlerInternalException(HTTPServer server, Socket socket, Exception e);
 
     /**
      * Called when a {@link RequestHandler} throws an exception while handling a request
-     * @param handler The handler that was handling the socket
+     * @param server The server which owns the handler that crashed
      * @param request The request that was being handled
      * @param socket The socket that was being handled
      * @param e The exception thrown
-     * @return True if the handler is allowed to keep the connection alive, False otherwise. If unsure, return false.
+     * @return A token if the request has been answered by the error handler, null if the handler cannot or is unwilling to answer the request where the exception occurred.
      */
-    boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequestImpl request, Socket socket, Exception e);
+    ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, Socket socket, Exception e);
 
     /**
      * Called when the {@link de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog} wants to terminate a connection because the timeout was exceeded but the operation fails
-     * @param handler The handler that crashed
+     * @param server The server which owns the handler that crashed
      * @param socket The socket that should get shutdown
      * @param e The exception thrown
      */
-    void onExternalTimeoutCloseFailed(HTTPClientHandler handler, Socket socket, Exception e);
+    void onExternalTimeoutCloseFailed(HTTPServer server, Socket socket, Exception e);
 }

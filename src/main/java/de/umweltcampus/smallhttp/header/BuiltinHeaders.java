@@ -19,6 +19,6 @@ public enum BuiltinHeaders {
 
     BuiltinHeaders() {
         this.httpName = StringUtil.capitalize('-', name().replace('_', '-'));
-        this.headerKey = new PrecomputedHeaderKey(httpName);
+        this.headerKey = PrecomputedHeaderKey.create(httpName);
     }
 }
