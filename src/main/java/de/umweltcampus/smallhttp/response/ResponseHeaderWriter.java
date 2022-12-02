@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * An interface that allows the application to write header data or continue to the body once it finishes.
  */
-public interface ResponseHeaderWriter {
+public interface ResponseHeaderWriter extends ResettableWriter {
 
     /**
      * Add custom headers to the request, like Set-Cookie or other relevant headers.
@@ -35,14 +35,6 @@ public interface ResponseHeaderWriter {
      * @return The current header writer to add more headers or start with the body
      */
     ResponseHeaderWriter addHeader(PrecomputedHeader header);
-
-    /**
-     * Resets the entire response builder, allowing the response to be filled again.
-     * <br>
-     * This should not be used in commonly used code, but is rather intended to be used in case an unexpected exception is thrown.
-     * @return A writer to begin with a new response
-     */
-    ResponseStartWriter resetResponseBuilder();
 
     /**
      * Ends writing of the headers and begins to write the body.

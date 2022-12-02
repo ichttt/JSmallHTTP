@@ -80,7 +80,7 @@ public class HTTPServer {
                 if (socketTimeout != -1) {
                     acceptedSocket.setSoTimeout(socketTimeout);
                 }
-                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler, this.tracker, this.allowTraceConnect, this.builtinServerWideOptions, this.maxBodyLengthBytes);
+                HTTPClientHandler httpClientHandler = new HTTPClientHandler(acceptedSocket, this.errorHandler, this.handler, this, this.tracker, this.allowTraceConnect, this.builtinServerWideOptions, this.maxBodyLengthBytes);
                 try {
                     this.executor.submit(httpClientHandler);
                 } catch (RejectedExecutionException e) {

@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 public class EndpointModule<T extends BaseEndpoint> {
-    public static final PrecomputedHeaderKey ALLOWED_HEADER = new PrecomputedHeaderKey("Allow");
+    public static final PrecomputedHeaderKey ALLOWED_HEADER = PrecomputedHeaderKey.create("Allow");
     private static final Logger LOGGER = LogManager.getLogger(EndpointModule.class);
     private final String prefix;
     private final Map<String, T> endpoints;

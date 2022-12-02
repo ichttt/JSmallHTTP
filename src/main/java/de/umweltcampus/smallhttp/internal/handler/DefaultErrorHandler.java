@@ -1,8 +1,10 @@
 package de.umweltcampus.smallhttp.internal.handler;
 
 import de.umweltcampus.smallhttp.base.ErrorHandler;
+import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.base.HTTPServer;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
+import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -43,20 +45,20 @@ public class DefaultErrorHandler implements ErrorHandler {
     }
 
     @Override
-    public void onClientHandlerInternalException(HTTPClientHandler handler, Socket socket, Exception e) {
+    public void onClientHandlerInternalException(HTTPServer server, Socket socket, Exception e) {
         if (e instanceof SocketException) return; // ignore
         e.printStackTrace();
     }
 
     @Override
-    public boolean onResponseHandlerException(HTTPClientHandler handler, HTTPRequestImpl request, Socket socket, Exception e) {
-        if (e instanceof HTTPWriteException && e.getCause() instanceof SocketException) return false; // ignore
+    public ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, Socket socket, Exception e) {
+        if (e instanceof HTTPWriteException && e.getCause() instanceof SocketException) return null; // ignore
         e.printStackTrace();
-        return false;
+        return null;
     }
 
     @Override
-    public void onExternalTimeoutCloseFailed(HTTPClientHandler handler, Socket socket, Exception e) {
+    public void onExternalTimeoutCloseFailed(HTTPServer server, Socket socket, Exception e) {
         e.printStackTrace();
     }
 }

@@ -22,8 +22,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 
 public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter, FixedResponseBodyWriter, ChunkedResponseWriter {
-    private static final PrecomputedHeader SERVER_HEADER = new PrecomputedHeader(BuiltinHeaders.SERVER.headerKey, "JSmallHTTP");
-    private static final PrecomputedHeader CHUNKED_ENCODING = new PrecomputedHeader(BuiltinHeaders.TRANSFER_ENCODING.headerKey, "chunked");
+    private static final PrecomputedHeader SERVER_HEADER = PrecomputedHeader.create(BuiltinHeaders.SERVER.headerKey, "JSmallHTTP");
+    private static final PrecomputedHeader CHUNKED_ENCODING = PrecomputedHeader.create(BuiltinHeaders.TRANSFER_ENCODING.headerKey, "chunked");
     private static final byte[] CRLF_BYTES = "\r\n".getBytes(StandardCharsets.US_ASCII);
     private static final byte[] TRANSFER_ENCODING_END = "0\r\n\r\n".getBytes(StandardCharsets.US_ASCII);
 
@@ -151,6 +151,10 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
         return this;
     }
 
+    @Override
+    public boolean canResetResponseWriter() {
+        return !this.startedSendingData;
+    }
 
 
     @Override

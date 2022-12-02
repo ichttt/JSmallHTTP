@@ -11,7 +11,10 @@
           {
             "prefixToServe": "",
             "pathOnDisk": "./test",
-            "precompress": true
+            "precompress": true,
+            "additionalHeaders": {
+              "Cache-Control": "no-cache"
+            }
           }
         ]
       }

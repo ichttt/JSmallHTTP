@@ -7,7 +7,9 @@ import java.lang.invoke.MethodType;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 public class Launcher {
 
@@ -18,19 +20,15 @@ public class Launcher {
 
         ModuleLayer pluginLayer;
         try {
-            Path[] libraryModules = ApplicationLocator.findPossibleLibraryPaths();
-            ClassLoader scl = ClassLoader.getSystemClassLoader();
-            if (libraryModules != null && libraryModules.length > 0) {
-                Configuration libraryConfig = parent.configuration().resolveAndBind(ModuleFinder.of(libraryModules), ModuleFinder.of(), Collections.emptySet());
-                parent = parent.defineModulesWithOneLoader(libraryConfig, scl);
-            }
+            List<Path> libraryModules = new ArrayList<>(ApplicationLocator.findPossibleLibraryPaths());
 
-            Path[] pluginModules = ApplicationLocator.findPossibleModulePaths();
-            if (pluginModules == null || pluginModules.length == 0) {
+            List<Path> pluginModules = ApplicationLocator.findPossibleModulePaths();
+            if (pluginModules.isEmpty()) {
                 throw new RuntimeException("Failed to find any plugins!");
             }
-            Configuration pluginConfig = parent.configuration().resolveAndBind(ModuleFinder.of(pluginModules), ModuleFinder.of(), Collections.singleton("de.umweltcampus.webservices"));
-            pluginLayer = parent.defineModulesWithOneLoader(pluginConfig, scl);
+            libraryModules.addAll(pluginModules);
+            Configuration pluginConfig = parent.configuration().resolveAndBind(ModuleFinder.of(libraryModules.toArray(Path[]::new)), ModuleFinder.of(), Collections.singleton("de.umweltcampus.webservices"));
+            pluginLayer = parent.defineModulesWithOneLoader(pluginConfig, ClassLoader.getSystemClassLoader());
         } catch (IOException e) {
             throw new RuntimeException("Failed to boot module system!", e);
         }

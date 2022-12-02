@@ -52,3 +52,29 @@ jmh {
 test {
     useJUnitPlatform()
 }
+
+task copyDeps(type: Copy) {
+    from(sourceSets.service.runtimeClasspath)
+    include('*.jar')
+    includeEmptyDirs = false
+    into('build/deps/')
+}
+
+jar.dependsOn(copyDeps)
+
+task launcherJar(type: Jar) {
+    from(sourceSets.launcher.output)
+    archiveName('Launcher.jar')
+    manifest {
+        attributes("Main-Class": "de.umweltcampus.webservices.launcher.Launcher")
+    }
+}
+
+task servicesJar(type: Jar) {
+    from(sourceSets.service.output)
+    archiveName('Webservices.jar')
+}
+
+servicesJar.dependsOn(jar)
+build.dependsOn(launcherJar)
+build.dependsOn(servicesJar)

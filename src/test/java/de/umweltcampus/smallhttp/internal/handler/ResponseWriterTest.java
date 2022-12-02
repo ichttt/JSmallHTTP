@@ -11,7 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 public class ResponseWriterTest {
-    private static final PrecomputedHeaderKey ETAG = new PrecomputedHeaderKey("ETag");
+    private static final PrecomputedHeaderKey ETAG = PrecomputedHeaderKey.create("ETag");
 
     @Test
     public void testEmptyHeaderWriting() throws Exception {
