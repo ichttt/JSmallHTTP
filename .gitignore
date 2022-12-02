@@ -18,5 +18,4 @@ build
 .gradle
 classes
 
-libs/
-plugins/
+webservices/logs/

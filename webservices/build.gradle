@@ -1,0 +1,99 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'java-library'
+}
+
+group 'de.umweltcampus'
+version '1.0.1'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+ext {
+    javaMainClass = "de.umweltcampus.webservices.launcher.Launcher"
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+sourceSets {
+    launcher {
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
+
+    api group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.19.0'
+    runtimeOnly group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
+    api group: 'com.google.code.gson', name: 'gson', version: '2.10'
+    api project(":")
+
+    // TODO switch to official version once https://github.com/hyperxpro/Brotli4j/issues/24 is fixed
+    runtimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-windows-x86_64', version: '1.8.100'
+    implementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.100'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task copyDeps(type: Copy) {
+    from(sourceSets.main.runtimeClasspath)
+    include('*.jar')
+    includeEmptyDirs = false
+    into('build/deps/')
+}
+
+jar.dependsOn(copyDeps)
+
+task launcherJar(type: Jar) {
+    from(sourceSets.launcher.output)
+    archiveFileName = 'webservices-launcher.jar'
+    manifest {
+        attributes("Main-Class": javaMainClass)
+    }
+}
+
+task run(type: JavaExec) {
+    classpath = sourceSets.launcher.runtimeClasspath
+    mainClass = javaMainClass
+}
+
+build.dependsOn(launcherJar)
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
+task launcherSourceJar(type: Jar) {
+    from sourceSets.launcher.allJava
+}
+
+publishing {
+    publications {
+        launcher(MavenPublication) {
+            from components.java
+            artifact launcherSourceJar {
+                artifactId "webservices-launcher"
+                classifier "sources"
+            }
+        }
+        services(MavenPublication) {
+            from components.java
+            artifact sourceJar {
+                artifactId "webservices-core"
+                classifier "sources"
+            }
+        }
+    }
+}
+
