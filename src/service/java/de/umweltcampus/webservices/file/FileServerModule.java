@@ -58,7 +58,7 @@ public class FileServerModule {
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
         if (compressionStrategy.compress) {
             String baseFolder = Objects.requireNonNull(System.getProperty("java.io.tmpdir"));
-            Path compressedFilesFolder = Paths.get(baseFolder, "webservices", webserviceName, prefixToServe);
+            Path compressedFilesFolder = Paths.get(baseFolder, "webservices", webserviceName.replace(':', '-'), prefixToServe);
             compressor = new FileCompressor(compressionStrategy, baseDirToServe, compressedFilesFolder);
         } else {
             compressor = null; // unused

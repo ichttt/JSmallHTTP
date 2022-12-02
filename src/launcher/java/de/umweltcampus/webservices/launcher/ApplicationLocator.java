@@ -1,5 +1,6 @@
 package de.umweltcampus.webservices.launcher;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,7 +24,16 @@ public class ApplicationLocator {
         List<Path> fromDir = list(MODULES_PATH);
         List<Path> allPaths = new ArrayList<>(fromDir);
         // Add classpath modules
-        allPaths.addAll(Arrays.stream(System.getProperty("java.class.path").split(":")).map(Paths::get).filter(Files::exists).toList());
+        String[] splitAdditionalModules = new String[0];
+        String additionalModules = System.getProperty("java.class.path");
+        if (additionalModules != null) {
+            splitAdditionalModules = additionalModules.split(File.pathSeparator);
+        }
+        List<Path> classPathsToAdd = Arrays.stream(splitAdditionalModules)
+                .map(Paths::get)
+                .filter(Files::exists)
+                .toList();
+        allPaths.addAll(classPathsToAdd);
         return allPaths;
     }
 

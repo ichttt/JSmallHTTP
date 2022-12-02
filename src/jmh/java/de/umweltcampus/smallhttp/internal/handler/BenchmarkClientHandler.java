@@ -15,7 +15,7 @@ public class BenchmarkClientHandler extends HTTPClientHandler {
     private final BlackholeOutputStream outputStream;
 
     public BenchmarkClientHandler(ErrorHandler errorHandler, RequestHandler handler, ClientHandlerTracker tracker, byte[] toRead, Blackhole blackhole) {
-        super(null, errorHandler, handler, tracker, false, true, Short.MAX_VALUE);
+        super(null, errorHandler, handler, null, tracker, false, true, Short.MAX_VALUE);
         this.inputStream = new ByteArrayInputStream(toRead);
         this.outputStream = new BlackholeOutputStream(blackhole);
     }

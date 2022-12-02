@@ -12,6 +12,10 @@ java {
     }
 }
 
+ext {
+    javaMainClass = "de.umweltcampus.webservices.launcher.Launcher"
+}
+
 repositories {
     mavenCentral()
     mavenLocal()
@@ -34,8 +38,8 @@ dependencies {
     serviceImplementation group: 'com.google.code.gson', name: 'gson', version: '2.10'
 
     // TODO switch to official version once https://github.com/hyperxpro/Brotli4j/issues/24 is fixed
-    serviceRuntimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-linux-x86_64', version: '1.8.15'
-    serviceImplementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.15'
+    serviceRuntimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-windows-x86_64', version: '1.8.100'
+    serviceImplementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.100'
 }
 
 jmh {
@@ -64,15 +68,20 @@ jar.dependsOn(copyDeps)
 
 task launcherJar(type: Jar) {
     from(sourceSets.launcher.output)
-    archiveName('Launcher.jar')
+    archiveFileName = 'Launcher.jar'
     manifest {
-        attributes("Main-Class": "de.umweltcampus.webservices.launcher.Launcher")
+        attributes("Main-Class": javaMainClass)
     }
 }
 
 task servicesJar(type: Jar) {
     from(sourceSets.service.output)
-    archiveName('Webservices.jar')
+    archiveFileName = 'Webservices.jar'
+}
+
+task run(type: JavaExec) {
+    classpath = sourceSets.launcher.runtimeClasspath
+    mainClass = javaMainClass
 }
 
 servicesJar.dependsOn(jar)

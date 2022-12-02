@@ -15,7 +15,6 @@ public class Launcher {
 
 
     public static void main(String[] args) {
-        System.out.println(System.getProperty("java.class.path"));
         ModuleLayer parent = ModuleLayer.boot();
 
         ModuleLayer pluginLayer;
@@ -27,6 +26,7 @@ public class Launcher {
                 throw new RuntimeException("Failed to find any plugins!");
             }
             libraryModules.addAll(pluginModules);
+            System.out.println("Loading " + libraryModules);
             Configuration pluginConfig = parent.configuration().resolveAndBind(ModuleFinder.of(libraryModules.toArray(Path[]::new)), ModuleFinder.of(), Collections.singleton("de.umweltcampus.webservices"));
             pluginLayer = parent.defineModulesWithOneLoader(pluginConfig, ClassLoader.getSystemClassLoader());
         } catch (IOException e) {

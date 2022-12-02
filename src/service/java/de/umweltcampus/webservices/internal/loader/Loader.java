@@ -26,6 +26,9 @@ public class Loader {
         LOGGER.debug("Started up log4j in {} ms", (stopTime - startTime));
     }
 
+    /**
+     * Called from module launcher. DO NOT CHANGE SIGNATURE OR NAME! The loader holds a static reference to this
+     */
     public static void init() {
         if (DEV_MODE) {
             LOGGER.warn("DEV MODE ENABLED");
