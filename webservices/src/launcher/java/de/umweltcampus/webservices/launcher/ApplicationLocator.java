@@ -12,8 +12,9 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class ApplicationLocator {
-    private static final String LIBRARY_PATH = System.getProperty("webservices.library_path", "./libs/");
-    private static final String MODULES_PATH = System.getProperty("webservices.library_path", "./plugins/");
+    private static final String LIBRARY_PATH = System.getProperty("webservices.launcher.library_path", "./libs/");
+    private static final String MODULES_PATH = System.getProperty("webservices.launcher.plugin_path", "./plugins/");
+    private static final String ADDITIONAL_MODULES = System.getProperty("webservices.launcher.additional_modules", "./plugins/");
 
 
     public static List<Path> findPossibleLibraryPaths() throws IOException {
@@ -25,9 +26,8 @@ public class ApplicationLocator {
         List<Path> allPaths = new ArrayList<>(fromDir);
         // Add classpath modules
         String[] splitAdditionalModules = new String[0];
-        String additionalModules = System.getProperty("java.class.path");
-        if (additionalModules != null) {
-            splitAdditionalModules = additionalModules.split(File.pathSeparator);
+        if (ADDITIONAL_MODULES != null) {
+            splitAdditionalModules = ADDITIONAL_MODULES.split(File.pathSeparator);
         }
         List<Path> classPathsToAdd = Arrays.stream(splitAdditionalModules)
                 .map(Paths::get)

@@ -1,3 +1,5 @@
+import java.util.stream.Collectors
+
 plugins {
     id 'java'
     id 'maven-publish'
@@ -5,7 +7,7 @@ plugins {
 }
 
 group 'de.umweltcampus'
-version '1.0.1'
+version '1.0.3'
 
 java {
     toolchain {
@@ -66,6 +68,7 @@ task launcherJar(type: Jar) {
 task run(type: JavaExec) {
     classpath = sourceSets.launcher.runtimeClasspath
     mainClass = javaMainClass
+    jvmArgs = ["-Dwebservices.dev=true", "-Dwebservices.launcher.additional_modules=" + sourceSets.main.runtimeClasspath.toList().stream().map(Object::toString).collect(Collectors.joining(File.pathSeparator))]
 }
 
 build.dependsOn(launcherJar)
@@ -81,7 +84,9 @@ task launcherSourceJar(type: Jar) {
 publishing {
     publications {
         launcher(MavenPublication) {
-            from components.java
+            artifact launcherJar {
+                artifactId "webservices-launcher"
+            }
             artifact launcherSourceJar {
                 artifactId "webservices-launcher"
                 classifier "sources"
