@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 public class ApplicationLocator {
     private static final String LIBRARY_PATH = System.getProperty("webservices.launcher.library_path", "./libs/");
     private static final String MODULES_PATH = System.getProperty("webservices.launcher.plugin_path", "./plugins/");
-    private static final String ADDITIONAL_MODULES = System.getProperty("webservices.launcher.additional_modules", "./plugins/");
+    private static final String ADDITIONAL_MODULES = System.getProperty("webservices.launcher.additional_modules");
 
 
     public static List<Path> findPossibleLibraryPaths() throws IOException {
