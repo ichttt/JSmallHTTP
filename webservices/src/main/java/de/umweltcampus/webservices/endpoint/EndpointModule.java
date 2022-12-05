@@ -69,11 +69,7 @@ public class EndpointModule<T extends BaseEndpoint> {
             if (request.getMethod() == Method.OPTIONS) {
                 return endpoint.handleOptions(request, responseStartWriter);
             }
-            if (request.getMethod() == Method.HEAD) {
-                return endpoint.handleHead(request, responseStartWriter);
-            } else {
-                return endpoint.answerRequest(request, responseStartWriter);
-            }
+            return endpoint.answerRequest(request, responseStartWriter);
         } catch (RuntimeException e) {
             LOGGER.warn("Internal Endpoint error", e);
             return responseStartWriter.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN).writeBodyAndFlush("Unknown Endpoint failure");

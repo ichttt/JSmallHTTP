@@ -40,8 +40,8 @@ dependencies {
     api project(":")
 
     // TODO switch to official version once https://github.com/hyperxpro/Brotli4j/issues/24 is fixed
-    runtimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-windows-x86_64', version: '1.8.100'
-    implementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.100'
+    runtimeOnly group: 'com.aayushatharva.brotli4j', name: 'native-linux-x86_64', version: '1.8.112'
+    implementation group: 'com.aayushatharva.brotli4j', name: 'brotli4j', version: '1.8.112'
 }
 
 test {

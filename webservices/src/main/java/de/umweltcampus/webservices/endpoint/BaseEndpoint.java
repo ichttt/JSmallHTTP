@@ -13,50 +13,50 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Base class representing an endpoint that dynamically answers requests
+ */
 public abstract class BaseEndpoint {
-    private final int maxBodySizeBytes;
     private final Method[] allowedMethods;
     private final String validMethodsString;
 
     /**
      * Creates a new base endpoint
-     * @param maxBodySizeBytes The maximum number of bytes that this endpoint is willing to handle
      * @param allowedMethods The allowed methods. Keep empty for all
      */
-    public BaseEndpoint(int maxBodySizeBytes, Method... allowedMethods) {
+    public BaseEndpoint(Method... allowedMethods) {
         // validate methods
         Set<Method> seenMethods = new HashSet<>();
         for (Method allowedMethod : allowedMethods) {
             if (allowedMethod == null) throw new IllegalArgumentException("Found null method!");
-            if (allowedMethod == Method.HEAD || allowedMethod == Method.OPTIONS) throw new IllegalArgumentException("HEAD and OPTIONS must not be in the allow list, they are handled in methods other then answerRequest!");
+            if (allowedMethod == Method.OPTIONS) throw new IllegalArgumentException("HEAD and OPTIONS must not be in the allow list, they are handled in methods other then answerRequest!");
             if (!seenMethods.add(allowedMethod)) throw new IllegalArgumentException("Duplicate method " + allowedMethod);
         }
 
-        this.maxBodySizeBytes = maxBodySizeBytes;
         this.allowedMethods = allowedMethods.length == 0 ? null : allowedMethods;
         this.validMethodsString = Arrays.stream(allowedMethods).map(Enum::name).collect(Collectors.joining(", "));
     }
 
     // Getters
-    public final int getMaxBodySizeBytes() {
-        return this.maxBodySizeBytes;
-    }
-
     public final Method[] getAllowedMethods() {
         return this.allowedMethods;
     }
 
-    String getValidMethodsString() {
+    final String getValidMethodsString() {
         return this.validMethodsString;
     }
 
     // Main serving methods
     public abstract ResponseToken answerRequest(HTTPRequest request, ResponseStartWriter responseWriter) throws HTTPWriteException;
 
-    public abstract ResponseToken handleHead(HTTPRequest request, ResponseStartWriter responseStartWriter) throws HTTPWriteException;
+    // Overrideable optional methods
 
     public ResponseToken handleOptions(HTTPRequest request, ResponseStartWriter responseStartWriter) throws HTTPWriteException {
         return responseStartWriter.respondWithoutContentType(Status.NO_CONTENT).addHeader(EndpointModule.ALLOWED_HEADER, getValidMethodsString()).sendWithoutBody();
+    }
+
+    public int getMaxBodySizeBytes() {
+        return Short.MAX_VALUE;
     }
 
     // Helper for error responses
