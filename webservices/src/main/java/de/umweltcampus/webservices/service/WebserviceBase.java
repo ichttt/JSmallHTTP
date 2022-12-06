@@ -14,14 +14,17 @@ import org.apache.logging.log4j.Logger;
 
 public abstract class WebserviceBase implements RequestHandler {
     private static final Logger LOGGER = LogManager.getLogger(WebserviceBase.class);
-    private final EndpointModule<?> endpointModule;
+    private final EndpointModule<?, ?> endpointModule;
     private final FileServerModule[] fileServers;
     protected String name;
 
-    public WebserviceBase(String name, EndpointModule<?> endpointModule, FileServerModule... fileServers) {
+    public WebserviceBase(String name, EndpointModule<?, ?> endpointModule, FileServerModule... fileServers) {
         this.name = name;
         this.endpointModule = endpointModule;
         this.fileServers = fileServers;
+        if (endpointModule != null) {
+            endpointModule.fillContext(this);
+        }
     }
 
     public String getName() {

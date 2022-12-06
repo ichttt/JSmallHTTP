@@ -8,6 +8,7 @@ import de.umweltcampus.smallhttp.header.PrecomputedHeaderKey;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.webservices.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -16,15 +17,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EndpointModule<T extends BaseEndpoint> {
+public class EndpointModule<SRV extends WebserviceBase, T extends BaseEndpoint<SRV>> {
     public static final PrecomputedHeaderKey ALLOWED_HEADER = PrecomputedHeaderKey.create("Allow");
     private static final Logger LOGGER = LogManager.getLogger(EndpointModule.class);
     private final String prefix;
+    private final Class<SRV> serviceType;
     private final Map<String, T> endpoints;
-    private final List<Validator<T>> validators;
+    private final List<Validator<SRV, T>> validators;
 
-    public EndpointModule(String prefix, Map<String, T> endpoints, List<Validator<T>> validators) {
+    public EndpointModule(String prefix, Class<SRV> serviceType, Map<String, T> endpoints, List<Validator<SRV, T>> validators) {
         this.prefix = prefix;
+        this.serviceType = serviceType;
         this.endpoints = endpoints;
         this.validators = validators;
     }
@@ -59,7 +62,7 @@ public class EndpointModule<T extends BaseEndpoint> {
             return responseStartWriter.respond(Status.CONTENT_TOO_LARGE, CommonContentTypes.PLAIN).writeBodyAndFlush("Body size too long, max size for this is endpoint is ", Integer.toString(endpoint.getMaxBodySizeBytes()), " bytes");
         }
 
-        for (Validator<T> validator : validators) {
+        for (Validator<SRV, T> validator : validators) {
             ResponseToken result = validator.validate(request, responseStartWriter, request.getPath(), endpoint);
             if (result != null)
                 return result;
@@ -76,32 +79,41 @@ public class EndpointModule<T extends BaseEndpoint> {
         }
     }
 
-    public static class Builder<T extends BaseEndpoint> {
-        private final HashMap<String, T> endpoints = new HashMap<>();
-        private final ArrayList<Validator<T>> validators = new ArrayList<>();
-        private final String prefix;
+    public void fillContext(WebserviceBase webserviceBase) {
+        SRV castedService = this.serviceType.cast(webserviceBase);
+        for (T value : this.endpoints.values()) {
+            value.setContext(castedService);
+        }
+    }
 
-        public Builder(String prefix) {
+    public static class Builder<SRV extends WebserviceBase, T extends BaseEndpoint<SRV>> {
+        private final HashMap<String, T> endpoints = new HashMap<>();
+        private final ArrayList<Validator<SRV, T>> validators = new ArrayList<>();
+        private final String prefix;
+        private final Class<SRV> serviceType;
+
+        public Builder(String prefix, Class<SRV> serviceType) {
             this.prefix = prefix;
+            this.serviceType = serviceType;
         }
 
-        public Builder<T> addEndpoint(String uri, T endpoint) {
+        public Builder<SRV, T> addEndpoint(String uri, T endpoint) {
             this.endpoints.put(uri, endpoint);
             return this;
         }
 
-        public Builder<T> addValidator(Validator<T> validator) {
+        public Builder<SRV, T> addValidator(Validator<SRV, T> validator) {
             this.validators.add(validator);
             return this;
         }
 
-        public EndpointModule<T> build() {
+        public EndpointModule<SRV, T> build() {
             validators.trimToSize();
-            return new EndpointModule<>(prefix, endpoints, validators);
+            return new EndpointModule<>(prefix, serviceType, endpoints, validators);
         }
     }
 
-    public interface Validator<T extends BaseEndpoint> {
+    public interface Validator<SRV extends WebserviceBase, T extends BaseEndpoint<SRV>> {
         /**
          * @return Null to indicate the validator is fine with the request, a {@link ResponseToken} if the validator has intervened and send a response to the client
          */

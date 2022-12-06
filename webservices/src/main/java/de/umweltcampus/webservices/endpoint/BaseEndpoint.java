@@ -7,6 +7,7 @@ import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.webservices.service.WebserviceBase;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -16,9 +17,10 @@ import java.util.stream.Collectors;
 /**
  * Base class representing an endpoint that dynamically answers requests
  */
-public abstract class BaseEndpoint {
+public abstract class BaseEndpoint<T extends WebserviceBase> {
     private final Method[] allowedMethods;
     private final String validMethodsString;
+    private T context;
 
     /**
      * Creates a new base endpoint
@@ -68,5 +70,16 @@ public abstract class BaseEndpoint {
     protected final ResponseToken responseError(ResponseStartWriter responseWriter, String msg, Status status, Exception cause) throws HTTPWriteException {
         EndpointLoggingHelper.logStatusCodeWithCause(this.getClass(), msg, status, cause);
         return responseWriter.respond(status, CommonContentTypes.PLAIN).writeBodyAndFlush(msg);
+    }
+
+    // Context methods
+    protected T getContext() {
+        return context;
+    }
+
+    public void setContext(T context) {
+        if (this.context != null) throw new IllegalStateException();
+        if (context == null) throw new IllegalArgumentException();
+        this.context = context;
     }
 }
