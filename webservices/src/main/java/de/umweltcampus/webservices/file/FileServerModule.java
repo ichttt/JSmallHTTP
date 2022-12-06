@@ -16,6 +16,7 @@ import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
 import de.umweltcampus.webservices.file.compress.CompressionStrategy;
 import de.umweltcampus.webservices.file.compress.FileCompressor;
 import de.umweltcampus.webservices.internal.util.TempDirHelper;
+import de.umweltcampus.webservices.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -47,16 +48,16 @@ public class FileServerModule {
      * @param baseDirToServe The directory to serve files from.
      * @param prefixToServe The prefix to serve, e.g. <code>files/</code> to serve the file <code>text.txt</code> from <code>"/files/text.txt"</code>
      * @param compressionStrategy The strategy that tells the module how to handle compression for different files
-     * @param webserviceName The name of the webservice this module is being created for
+     * @param responsibleWebservice The webservice this module is being created for
      * @param additionalHeaderAdder A consumer that allows the webservice to add additional headers such as Cache-Control
      */
-    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy, String webserviceName, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
+    public FileServerModule(Path baseDirToServe, String prefixToServe, CompressionStrategy compressionStrategy, WebserviceBase responsibleWebservice, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
         this.additionalHeaderAdder = additionalHeaderAdder;
         if (!Files.isDirectory(baseDirToServe)) throw new IllegalArgumentException("Base dir is not a directory!");
-        this.baseDirToServe = baseDirToServe;
+        this.baseDirToServe = baseDirToServe.toAbsolutePath();
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
         if (compressionStrategy.compress) {
-            Path compressedFilesFolder = TempDirHelper.createTempPathFor(webserviceName, prefixToServe);
+            Path compressedFilesFolder = TempDirHelper.createTempPathFor(responsibleWebservice.getName(), prefixToServe);
             compressor = new FileCompressor(compressionStrategy, baseDirToServe, compressedFilesFolder);
         } else {
             compressor = null; // unused
@@ -72,7 +73,7 @@ public class FileServerModule {
         if (path.startsWith(prefixToServe)) {
             String subPath = path.substring(prefixToServe.length());
             Path resolved = baseDirToServe.resolve(subPath).toAbsolutePath();
-            boolean invalid = subPath.startsWith("/") || subPath.contains("..") || resolved.startsWith(baseDirToServe);
+            boolean invalid = subPath.startsWith("/") || subPath.contains("..") || !resolved.startsWith(baseDirToServe);
             if (invalid) {
                 return writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Invalid path");
             }

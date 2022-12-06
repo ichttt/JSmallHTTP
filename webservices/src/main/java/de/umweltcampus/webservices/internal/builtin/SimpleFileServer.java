@@ -11,11 +11,12 @@ import java.nio.file.Paths;
 
 public class SimpleFileServer extends WebserviceBase {
 
-    private SimpleFileServer(String name, FileServerModule[] modules) {
-        super(name, null, modules);
+    private SimpleFileServer(String name) {
+        super(name);
     }
 
     public static SimpleFileServer create(SimpleFileServerConfig config, String name) {
+        SimpleFileServer simpleFileServer = new SimpleFileServer(name);
         FileServerModule[] modules = new FileServerModule[config.folderInfos.size()];
         for (int i = 0; i < config.folderInfos.size(); i++) {
             FolderInfo folderInfo = config.folderInfos.get(i);
@@ -25,12 +26,13 @@ public class SimpleFileServer extends WebserviceBase {
             } else {
                 headers = new PrecomputedHeader[0];
             }
-            modules[i] = new FileServerModule(Paths.get(folderInfo.pathOnDisk), folderInfo.prefixToServe, CompressionStrategy.compressAndStore(true, folderInfo.precompress), name, (httpRequest, headerWriter) -> {
+            modules[i] = new FileServerModule(Paths.get(folderInfo.pathOnDisk), folderInfo.prefixToServe, CompressionStrategy.compressAndStore(true, folderInfo.precompress), simpleFileServer, (httpRequest, headerWriter) -> {
                 for (PrecomputedHeader header : headers) {
                     headerWriter.addHeader(header);
                 }
             });
         }
-        return new SimpleFileServer(name, modules);
+        simpleFileServer.setFileServers(modules);
+        return simpleFileServer;
     }
 }

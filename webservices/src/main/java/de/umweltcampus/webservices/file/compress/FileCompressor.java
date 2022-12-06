@@ -39,6 +39,7 @@ public class FileCompressor {
         BrotliCompressor brotli = BrotliLoader.getBrotliCompressor();
         try (Stream<Path> stream = Files.walk(toCompress)) {
             stream.forEach(path -> {
+                path = toCompress.relativize(path);
                 String fileName = path.getFileName().toString();
                 if (compressionStrategy.shouldCompress(fileName) && Files.isRegularFile(path)) {
                     Path inTmpGz = compressedFilesFolder.resolve(path + ".gz");

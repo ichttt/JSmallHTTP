@@ -31,18 +31,18 @@ public class ResourceFileServer {
     private static final Logger LOGGER = LogManager.getLogger(ResourceFileServer.class);
     private static final PrecomputedHeader CACHE_CONTROL = PrecomputedHeader.create("Cache-Control", "max-age: 3600");
 
-    public static <T extends WebserviceBase> FileServerModule createModule(T webservice, String prefixToServe, String pathInService) {
+    public static FileServerModule createModule(WebserviceBase webservice, String prefixToServe, String pathInService) {
         return createModule(webservice, prefixToServe, pathInService, (httpRequest, responseHeaderWriter) -> responseHeaderWriter.addHeader(CACHE_CONTROL));
     }
 
-    public static <T extends WebserviceBase> FileServerModule createModule(T webservice, String prefixToServe, String pathInService, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
+    public static FileServerModule createModule(WebserviceBase webservice, String prefixToServe, String pathInService, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
         Path pathToServe;
         try {
             pathToServe = copyFiles(webservice, pathInService);
         } catch (Exception e) {
             throw new RuntimeException("Failed to copy files for module " + webservice.getName(), e);
         }
-        return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(false, true), webservice.getName(), additionalHeaderAdder);
+        return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(false, true), webservice, additionalHeaderAdder);
     }
 
     private static Path copyFiles(WebserviceBase webservice, String pathInService) throws IOException {

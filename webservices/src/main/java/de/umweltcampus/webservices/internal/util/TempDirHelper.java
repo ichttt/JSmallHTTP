@@ -15,11 +15,10 @@ public class TempDirHelper {
         Path compressedFilesFolder;
         try {
             Files.createDirectories(tmpBase);
-            compressedFilesFolder = Files.createTempDirectory(tmpBase, tempPrefix);
+            compressedFilesFolder = Files.createTempDirectory(tmpBase, "tmp_" + tempPrefix.replace('/', '_'));
         } catch (IOException e) {
             throw new RuntimeException("Failed to create tmp dir!", e);
         }
-        compressedFilesFolder.toFile().deleteOnExit();
         return compressedFilesFolder;
     }
 }
