@@ -15,6 +15,7 @@ import de.umweltcampus.smallhttp.response.ResponseToken;
 import de.umweltcampus.smallhttp.util.ResponseDateFormatter;
 import de.umweltcampus.webservices.file.compress.CompressionStrategy;
 import de.umweltcampus.webservices.file.compress.FileCompressor;
+import de.umweltcampus.webservices.internal.util.TempDirHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -23,11 +24,9 @@ import java.net.URLConnection;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,8 +56,7 @@ public class FileServerModule {
         this.baseDirToServe = baseDirToServe;
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
         if (compressionStrategy.compress) {
-            String baseFolder = Objects.requireNonNull(System.getProperty("java.io.tmpdir"));
-            Path compressedFilesFolder = Paths.get(baseFolder, "webservices", webserviceName.replace(':', '-'), prefixToServe);
+            Path compressedFilesFolder = TempDirHelper.createTempPathFor(webserviceName, prefixToServe);
             compressor = new FileCompressor(compressionStrategy, baseDirToServe, compressedFilesFolder);
         } else {
             compressor = null; // unused
