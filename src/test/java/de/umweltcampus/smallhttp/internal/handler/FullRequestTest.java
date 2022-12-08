@@ -42,14 +42,14 @@ public class FullRequestTest {
 
     @Test
     public void sendHttpRequestInDifferentChunks() throws Exception {
-        Assertions.assertTimeoutPreemptively(Duration.of(30, ChronoUnit.SECONDS), () -> {
+        Assertions.assertTimeoutPreemptively(Duration.of(15, ChronoUnit.SECONDS), () -> {
                     for (int chunkSize = 1; chunkSize < TO_SEND_CLOSE.length() - 1; chunkSize++) {
                         Socket socket = new Socket("localhost", 6549);
                         socket.setSoTimeout(200);
                         for (int i = 0; i < TO_SEND_CLOSE.length(); i += chunkSize) {
                             socket.getOutputStream().write(TO_SEND_CLOSE.substring(i, Math.min(i + chunkSize, TO_SEND_CLOSE.length())).getBytes(StandardCharsets.US_ASCII));
                             socket.getOutputStream().flush();
-                            Thread.sleep((int) (Math.random() * 25));
+                            Thread.sleep((int) (Math.random() * 10));
                         }
                         socket.shutdownOutput();
                         byte[] bytes = socket.getInputStream().readAllBytes();
@@ -63,14 +63,14 @@ public class FullRequestTest {
 
     @Test
     public void sendHttpRequestInDifferentChunksWithKeepalive() throws Exception {
-        Assertions.assertTimeoutPreemptively(Duration.of(30, ChronoUnit.SECONDS), () -> {
+        Assertions.assertTimeoutPreemptively(Duration.of(15, ChronoUnit.SECONDS), () -> {
             try (Socket socket = new Socket("localhost", 6549)) {
-                socket.setSoTimeout(200);
+                socket.setSoTimeout(50);
                 for (int chunkSize = 1; chunkSize < TO_SEND_KEEP_ALIVE.length() - 1; chunkSize++) {
                     for (int i = 0; i < TO_SEND_KEEP_ALIVE.length(); i += chunkSize) {
                         socket.getOutputStream().write(TO_SEND_KEEP_ALIVE.substring(i, Math.min(i + chunkSize, TO_SEND_KEEP_ALIVE.length())).getBytes(StandardCharsets.US_ASCII));
                         socket.getOutputStream().flush();
-                        Thread.sleep((int) (Math.random() * 25));
+                        Thread.sleep((int) (Math.random() * 10));
                     }
                     // Can't readAllBytes as connection stays open. So a bit of hack: Read until we time out
                     // A proper client has much more complex logic, but that would be out of scope for this test
@@ -107,7 +107,7 @@ public class FullRequestTest {
         });
         AtomicReference<Throwable> reference = new AtomicReference<>();
         serverShutdownThread.setUncaughtExceptionHandler((t, e) -> reference.set(e));
-        Assertions.assertTimeoutPreemptively(Duration.of(10, ChronoUnit.SECONDS), () -> {
+        Assertions.assertTimeoutPreemptively(Duration.of(5, ChronoUnit.SECONDS), () -> {
             int chunkSize = 10;
             Socket socket = new Socket("localhost", 8342);
             socket.setSoTimeout(200);
@@ -117,7 +117,7 @@ public class FullRequestTest {
                 }
                 socket.getOutputStream().write(TO_SEND_CLOSE.substring(i, Math.min(i + chunkSize, TO_SEND_CLOSE.length())).getBytes(StandardCharsets.US_ASCII));
                 socket.getOutputStream().flush();
-                Thread.sleep(200);
+                Thread.sleep(50);
             }
             socket.shutdownOutput();
             byte[] bytes = socket.getInputStream().readAllBytes();

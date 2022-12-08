@@ -4,7 +4,7 @@
         <Console name="Console">
             <PatternLayout pattern="%highlight{[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n}"/>
         </Console>
-        <RollingRandomAccessFile name="LogFile" fileName="logs/debug.log" filePattern="logs/info-%i.log.gz">
+        <RollingRandomAccessFile name="LogFile" fileName="logs/info.log" filePattern="logs/info-%i.log.gz">
             <PatternLayout pattern="[%d{dd.MM.yy HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n"/>
             <Policies>
                 <OnStartupTriggeringPolicy/>

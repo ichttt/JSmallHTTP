@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
@@ -48,26 +49,23 @@ public class ResourceFileServer {
     private static Path copyFiles(WebserviceBase webservice, String pathInService) throws IOException {
         if (pathInService.startsWith("/")) pathInService = pathInService.substring(1);
         URL location = webservice.getClass().getProtectionDomain().getCodeSource().getLocation();
-        URI locationURI;
-        try {
-            locationURI = location.toURI();
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("Failed to convert URL to URI. How does this even work?!", e);
-        }
 
-
-        if (location.getProtocol().equals("jar")) {
-            return copyJarSource(webservice, pathInService, locationURI).toRealPath();
+        if (location.toString().endsWith(".jar")) {
+            return copyJarSource(webservice, pathInService, location).toRealPath();
         } else if (location.getProtocol().equals("file")) {
-            return copyExplodedDirSource(pathInService, locationURI).toRealPath();
+            return copyExplodedDirSource(pathInService, location).toRealPath();
         } else {
             throw new RuntimeException("Failed to handle code source location protocol type " + location.getProtocol() + " (complete url:" + location + ")");
         }
     }
 
-    private static Path copyJarSource(WebserviceBase webservice, String pathInService, URI locationURI) throws IOException {
+    private static Path copyJarSource(WebserviceBase webservice, String pathInService, URL location) throws IOException {
         // TODO validate the jar code actually works
-        try (FileSystem fileSystem = FileSystems.newFileSystem(locationURI, Map.of(), webservice.getClass().getClassLoader())) {
+        String file = location.getFile();
+        if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
+            file = file.substring(1); // Strip initial slash, windows has no root, but different letters for its drives. URL doesn't know this and thus returns an invalid windows path with a starting slash
+        }
+        try (FileSystem fileSystem = FileSystems.newFileSystem(Paths.get(file), Map.of(), webservice.getClass().getClassLoader())) {
             Path rootInFs = fileSystem.getPath(pathInService);
             List<Path> paths;
             try (Stream<Path> pathStream = Files.walk(rootInFs)) {
@@ -75,7 +73,8 @@ public class ResourceFileServer {
             }
             Path targetDir = TempDirHelper.createTempPathFor(webservice.getName(), pathInService);
             for (Path source : paths) {
-                String relativePath = rootInFs.resolve(source).toString();
+                if (Files.isDirectory(source)) continue;
+                String relativePath = rootInFs.relativize(source).toString();
                 Path pathInTarget = targetDir.resolve(relativePath);
                 Files.copy(source, pathInTarget);
             }
@@ -85,7 +84,13 @@ public class ResourceFileServer {
         }
     }
 
-    private static Path copyExplodedDirSource(String pathInService, URI locationURI) {
+    private static Path copyExplodedDirSource(String pathInService, URL location) {
+        URI locationURI;
+        try {
+            locationURI = location.toURI();
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Failed to convert URL to URI. How does this even work?!", e);
+        }
         Path rootPath = Paths.get(locationURI);
         Path resolved = rootPath.resolve(pathInService);
         if (!Files.exists(resolved)) {
