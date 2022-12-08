@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.config;
+package de.umweltcampus.webservices.config.service;
 
 import de.umweltcampus.webservices.service.InvalidConfigValueException;
 

@@ -5,7 +5,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import de.umweltcampus.webservices.config.BaseServiceConfig;
+import de.umweltcampus.webservices.config.service.BaseServiceConfig;
 import de.umweltcampus.webservices.internal.WebserviceLookup;
 import de.umweltcampus.webservices.service.WebserviceDefinition;
 

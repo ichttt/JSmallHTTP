@@ -1,4 +1,6 @@
-package de.umweltcampus.webservices.config;
+package de.umweltcampus.webservices.config.server;
+
+import de.umweltcampus.webservices.config.service.BaseServiceConfig;
 
 public final class VirtualMapping {
     public final String basePath;

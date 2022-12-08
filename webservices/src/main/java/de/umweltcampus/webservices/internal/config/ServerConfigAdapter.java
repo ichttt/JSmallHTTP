@@ -5,9 +5,9 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import de.umweltcampus.webservices.config.RealServerConfig;
-import de.umweltcampus.webservices.config.ServerConfig;
-import de.umweltcampus.webservices.config.VirtualServerConfig;
+import de.umweltcampus.webservices.config.server.RealServerConfig;
+import de.umweltcampus.webservices.config.server.ServerConfig;
+import de.umweltcampus.webservices.config.server.VirtualServerConfig;
 
 import java.lang.reflect.Type;
 

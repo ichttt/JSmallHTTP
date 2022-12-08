@@ -1,16 +1,16 @@
 package de.umweltcampus.webservices.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 public interface ServiceProvider {
 
     /**
-     * Called once after discovery of all service providers has been completed.
+     * Called once after discovery of all service providers has been completed and the config of services has been evaluated
      * @param allProviders A set service providers (including this) that have been found
      */
-    default void initialize(Map<String, ServiceProvider> allProviders) {}
-
+    default void initialize(Map<String, ServiceProvider> allProviders, Collection<WebserviceDefinition<?>> servicesToStart) {}
 
     /**
      * Gets a static list of services this provider supports.

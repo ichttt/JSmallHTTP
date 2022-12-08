@@ -1,6 +1,6 @@
 package de.umweltcampus.webservices.internal.builtin.config;
 
-import de.umweltcampus.webservices.config.BaseServiceConfig;
+import de.umweltcampus.webservices.config.service.BaseServiceConfig;
 import de.umweltcampus.webservices.service.InvalidConfigValueException;
 
 import java.nio.file.Files;

@@ -5,10 +5,7 @@ import de.umweltcampus.webservices.service.WebserviceDefinition;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class WebserviceLookup {
@@ -42,12 +39,17 @@ public class WebserviceLookup {
         }
         LOGGER.info("Found {} services", serviceProviders.size());
 
-        Map<String, ServiceProvider> unmodifiableView = Collections.unmodifiableMap(serviceProviders);
-        for (ServiceProvider value : serviceProviders.values()) {
-            value.initialize(unmodifiableView);
-        }
+
 
         LOGGER.debug("Services initialized");
+    }
+
+    public void initServices(Collection<WebserviceDefinition<?>> loadedServices) {
+        Map<String, ServiceProvider> unmodifiableServices = Collections.unmodifiableMap(serviceProviders);
+        Collection<WebserviceDefinition<?>> unmodifiableDefinitions = Collections.unmodifiableCollection(loadedServices);
+        for (ServiceProvider value : serviceProviders.values()) {
+            value.initialize(unmodifiableServices, unmodifiableDefinitions);
+        }
     }
 
     public WebserviceDefinition<?> getFromSpec(String spec) {

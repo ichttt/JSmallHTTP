@@ -2,9 +2,9 @@ package de.umweltcampus.webservices.internal.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import de.umweltcampus.webservices.config.BaseServiceConfig;
-import de.umweltcampus.webservices.config.RootConfig;
-import de.umweltcampus.webservices.config.ServerConfig;
+import de.umweltcampus.webservices.config.service.BaseServiceConfig;
+import de.umweltcampus.webservices.config.server.RootConfig;
+import de.umweltcampus.webservices.config.server.ServerConfig;
 import de.umweltcampus.webservices.internal.WebserviceLookup;
 
 import java.io.BufferedReader;
