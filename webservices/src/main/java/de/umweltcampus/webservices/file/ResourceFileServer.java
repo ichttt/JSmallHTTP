@@ -4,6 +4,7 @@ import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
 import de.umweltcampus.smallhttp.response.ResponseHeaderWriter;
 import de.umweltcampus.webservices.file.compress.CompressionStrategy;
+import de.umweltcampus.webservices.internal.loader.Loader;
 import de.umweltcampus.webservices.internal.util.TempDirHelper;
 import de.umweltcampus.webservices.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
@@ -43,7 +44,7 @@ public class ResourceFileServer {
         } catch (Exception e) {
             throw new RuntimeException("Failed to copy files for module " + webservice.getName(), e);
         }
-        return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(false, true), webservice, additionalHeaderAdder);
+        return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(Loader.DEV_MODE, true), webservice, additionalHeaderAdder);
     }
 
     private static Path copyFiles(WebserviceBase webservice, String pathInService) throws IOException {

@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public class Loader {
+    public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
     private static final Logger LOGGER;
-    private static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
 
     static {
         long startTime = System.currentTimeMillis();

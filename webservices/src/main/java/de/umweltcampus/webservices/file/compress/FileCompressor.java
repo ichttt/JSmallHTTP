@@ -39,13 +39,12 @@ public class FileCompressor {
         BrotliCompressor brotli = BrotliLoader.getBrotliCompressor();
         try (Stream<Path> stream = Files.walk(toCompress)) {
             stream.forEach(path -> {
-                path = toCompress.relativize(path);
                 String fileName = path.getFileName().toString();
                 if (compressionStrategy.shouldCompress(fileName) && Files.isRegularFile(path)) {
-                    Path inTmpGz = compressedFilesFolder.resolve(path + ".gz");
-                    Path inTmpBr = compressedFilesFolder.resolve(path + ".br");
+                    Path relativePath = toCompress.relativize(path);
+                    Path inTmpGz = compressedFilesFolder.resolve(relativePath + ".gz");
+                    Path inTmpBr = compressedFilesFolder.resolve(relativePath + ".br");
                     try {
-                        Files.createDirectories(inTmpGz.getParent());
                         FileTime lastModifiedTime = Files.getLastModifiedTime(path);
                         compress(path, lastModifiedTime, inTmpGz);
                         if (brotli != null) {
@@ -102,7 +101,7 @@ public class FileCompressor {
                     }
                     return inCompressed;
                 } catch (IOException e) {
-                    LOGGER.warn("Failed to compress file {}", absolutePathToFind);
+                    LOGGER.warn("Failed to compress file {}", absolutePathToFind, e);
                 }
             }
         }
@@ -112,6 +111,7 @@ public class FileCompressor {
 
     private static void compress(Path src, FileTime srcLastModified, Path target) throws IOException {
         if (!Files.exists(target)) {
+            Files.createDirectories(target.getParent());
             target.toFile().deleteOnExit();
         }
         OutputStream outputStream = Files.newOutputStream(target);
@@ -124,6 +124,7 @@ public class FileCompressor {
 
     private static void compressBrotli(Path src, BrotliCompressor compressor, FileTime srcLastModified, Path target) throws IOException {
         if (!Files.exists(target)) {
+            Files.createDirectories(target.getParent());
             target.toFile().deleteOnExit();
         }
         try (InputStream inputStream = Files.newInputStream(src);
