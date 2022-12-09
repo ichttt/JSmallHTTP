@@ -1,5 +1,6 @@
 package de.umweltcampus.smallhttp.base;
 
+import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.net.Socket;
@@ -44,11 +45,12 @@ public interface ErrorHandler {
      * Called when a {@link RequestHandler} throws an exception while handling a request
      * @param server The server which owns the handler that crashed
      * @param request The request that was being handled
+     * @param writer The writer for that request
      * @param socket The socket that was being handled
      * @param e The exception thrown
      * @return A token if the request has been answered by the error handler, null if the handler cannot or is unwilling to answer the request where the exception occurred.
      */
-    ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, Socket socket, Exception e);
+    ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, ResponseStartWriter writer, Socket socket, Exception e);
 
     /**
      * Called when the {@link de.umweltcampus.smallhttp.internal.watchdog.SocketWatchdog} wants to terminate a connection because the timeout was exceeded but the operation fails

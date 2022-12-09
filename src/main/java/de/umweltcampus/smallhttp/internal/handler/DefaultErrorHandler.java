@@ -4,6 +4,7 @@ import de.umweltcampus.smallhttp.base.ErrorHandler;
 import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.base.HTTPServer;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
+import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 
 import java.io.IOException;
@@ -51,7 +52,7 @@ public class DefaultErrorHandler implements ErrorHandler {
     }
 
     @Override
-    public ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, Socket socket, Exception e) {
+    public ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, ResponseStartWriter writer, Socket socket, Exception e) {
         if (e instanceof HTTPWriteException && e.getCause() instanceof SocketException) return null; // ignore
         e.printStackTrace();
         return null;

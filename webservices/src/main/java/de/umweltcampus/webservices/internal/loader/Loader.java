@@ -10,6 +10,7 @@ import de.umweltcampus.webservices.config.server.ServerConfig;
 import de.umweltcampus.webservices.file.FileHolder;
 import de.umweltcampus.webservices.internal.WebserviceLookup;
 import de.umweltcampus.webservices.internal.config.Configuration;
+import de.umweltcampus.webservices.internal.server.SmallHTTPErrorHandler;
 import de.umweltcampus.webservices.service.InvalidConfigValueException;
 import de.umweltcampus.webservices.service.WebserviceBase;
 import de.umweltcampus.webservices.service.WebserviceDefinition;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-// TODO server error handler
 public class Loader {
     public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
     private static final Logger LOGGER;
@@ -124,8 +124,12 @@ public class Loader {
                 BaseServiceConfig service = realServerConfig.service;
                 WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(service));
 
-                WebserviceBase webservice = definition.createNew(service, service.serviceIdentifier + "-" + realServerConfig.port);
-                HTTPServer server = HTTPServerBuilder.create(realServerConfig.port, webservice).build();
+                String serviceIdentifier = service.serviceIdentifier;
+                WebserviceBase webservice = definition.createNew(service, serviceIdentifier + "-" + realServerConfig.port);
+                HTTPServer server = HTTPServerBuilder
+                        .create(realServerConfig.port, webservice)
+                        .setErrorHandler(new SmallHTTPErrorHandler(serviceIdentifier))
+                        .build();
                 LOGGER.info("Started {}", webservice.getName());
             } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
                 throw new RuntimeException("Virtual server config not yet implemented!");

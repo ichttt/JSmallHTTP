@@ -176,12 +176,13 @@ public class HTTPClientHandler implements Runnable {
             // In that case we forward a null path to handler and trust that it knows what to do with it
         }
 
+        ResponseStartWriter writer = newWriter(context, httpRequest.getVersion());
         try {
-            ResponseToken token = this.handler.answerRequest(httpRequest, newWriter(context, httpRequest.getVersion()));
+            ResponseToken token = this.handler.answerRequest(httpRequest, writer);
             if (!ResponseTokenImpl.validate(token))
                 throw new RuntimeException("Invalid token returned from handler!");
         } catch (Exception e) {
-            ResponseToken token = this.errorHandler.onResponseHandlerException(this.server, httpRequest, socket, e);
+            ResponseToken token = this.errorHandler.onResponseHandlerException(this.server, httpRequest, writer, socket, e);
             if (token == null) {
                 return false;
             } else {
