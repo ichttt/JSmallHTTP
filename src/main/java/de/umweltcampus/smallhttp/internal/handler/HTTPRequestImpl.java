@@ -3,6 +3,7 @@ package de.umweltcampus.smallhttp.internal.handler;
 import de.umweltcampus.smallhttp.base.HTTPRequest;
 import de.umweltcampus.smallhttp.data.HTTPVersion;
 import de.umweltcampus.smallhttp.data.Method;
+import de.umweltcampus.smallhttp.util.URLParser;
 
 import java.io.InputStream;
 import java.util.ArrayList;

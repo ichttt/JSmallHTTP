@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp.internal.handler;
+package de.umweltcampus.smallhttp.util;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

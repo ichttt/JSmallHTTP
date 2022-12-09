@@ -7,10 +7,14 @@ import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.smallhttp.util.URLParser;
 import de.umweltcampus.webservices.service.WebserviceBase;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -70,6 +74,14 @@ public abstract class BaseEndpoint<T extends WebserviceBase> {
     protected final ResponseToken responseError(ResponseStartWriter responseWriter, String msg, Status status, Exception cause) throws HTTPWriteException {
         EndpointLoggingHelper.logStatusCodeWithCause(this.getClass(), msg, status, cause);
         return responseWriter.respond(status, CommonContentTypes.PLAIN).writeBodyAndFlush(msg);
+    }
+
+    // Optional helper methods
+
+    protected final Map<String, String> parseUrlencodedBody(HTTPRequest request) throws IOException {
+        // https://url.spec.whatwg.org/#application/x-www-form-urlencoded - decode with UTF-8
+        String s = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        return URLParser.parseQuery(s);
     }
 
     // Context methods

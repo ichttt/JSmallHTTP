@@ -1,4 +1,4 @@
-package de.umweltcampus.smallhttp.internal.handler;
+package de.umweltcampus.smallhttp.util;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -21,6 +21,44 @@ public class URLParser {
         this.buf = buf;
         this.start = start;
         this.end = end;
+    }
+
+    public static Map<String, String> parseQuery(String query) {
+        if (query.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> map = new LinkedHashMap<>();
+
+        // See https://www.rfc-editor.org/rfc/rfc3986#section-3.4
+        String currKey = null;
+        int nextStart = 0;
+        int length = query.length();
+        for (int i = 0; i < length; i++) {
+            char c = query.charAt(i);
+            if (currKey == null && c == '=') {
+                currKey = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
+                nextStart = i + 1;
+            } else if (c == '&') {
+                String val = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
+                if (currKey != null) {
+                    map.put(currKey, val);
+                    currKey = null;
+                } else {
+                    map.put(val, null);
+                }
+                nextStart = i + 1;
+            } else if (c == '#' || i == length - 1) {
+                String subString = c == '#' ? query.substring(nextStart, i) : query.substring(nextStart);
+                String val = URLDecoder.decode(subString, StandardCharsets.UTF_8);
+                if (currKey != null) {
+                    map.put(currKey, val);
+                } else if (!val.isEmpty()) {
+                    map.put(val, null);
+                }
+                break;
+            }
+        }
+        return map;
     }
 
     public String parseRequestTarget() {
@@ -62,6 +100,19 @@ public class URLParser {
         return map;
     }
 
+    public boolean isAsteriskRequest() {
+        return start + 1 == end && buf[start] == '*';
+    }
+
+    private int searchNext(int start, int max, char charToFind) {
+        byte[] toSearch = buf;
+        for (int i = start; i < max; i++) {
+            if (toSearch[i] == charToFind)
+                return i;
+        }
+        return -1;
+    }
+
     private Map<String, String> parseQuery() {
         if (!parsedTarget) throw new IllegalStateException();
 
@@ -80,54 +131,6 @@ public class URLParser {
         } else {
             query = "";
         }
-        if (query.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<String, String> map = new LinkedHashMap<>();
-
-        // See https://www.rfc-editor.org/rfc/rfc3986#section-3.4
-        String currKey = null;
-        int nextStart = 0;
-        int length = query.length();
-        for (int i = 0; i < length; i++) {
-            char c = query.charAt(i);
-            if (currKey == null && c == '=') {
-                currKey = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
-                nextStart = i + 1;
-            } else if (c == '&') {
-                String val = URLDecoder.decode(query.substring(nextStart, i), StandardCharsets.UTF_8);
-                if (currKey != null) {
-                    map.put(currKey, val);
-                    currKey = null;
-                } else {
-                    map.put(val, null);
-                }
-                nextStart = i + 1;
-            } else if (c == '#' || i == length - 1) {
-                String subString = c == '#' ? query.substring(nextStart, i) : query.substring(nextStart);
-                String val = URLDecoder.decode(subString, StandardCharsets.UTF_8);
-                if (currKey != null) {
-                    map.put(currKey, val);
-                } else if (!val.isEmpty()) {
-                    map.put(val, null);
-                }
-                break;
-            }
-        }
-        return map;
-    }
-
-    private int searchNext(int start, int max, char charToFind) {
-        byte[] toSearch = buf;
-        for (int i = start; i < max; i++) {
-            if (toSearch[i] == charToFind)
-                return i;
-        }
-        return -1;
-    }
-
-    public boolean isAsteriskRequest() {
-        return start + 1 == end && buf[start] == '*';
+        return parseQuery(query);
     }
 }

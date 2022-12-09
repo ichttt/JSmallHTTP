@@ -15,6 +15,7 @@ import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
 import de.umweltcampus.smallhttp.util.StringUtil;
+import de.umweltcampus.smallhttp.util.URLParser;
 
 import java.io.IOException;
 import java.io.InputStream;
