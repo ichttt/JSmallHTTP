@@ -7,6 +7,7 @@ import de.umweltcampus.webservices.config.server.VirtualServerConfig;
 import de.umweltcampus.webservices.config.service.BaseServiceConfig;
 import de.umweltcampus.webservices.config.server.RootConfig;
 import de.umweltcampus.webservices.config.server.ServerConfig;
+import de.umweltcampus.webservices.file.FileHolder;
 import de.umweltcampus.webservices.internal.WebserviceLookup;
 import de.umweltcampus.webservices.internal.config.Configuration;
 import de.umweltcampus.webservices.service.InvalidConfigValueException;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+// TODO server error handler
 public class Loader {
     public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
     private static final Logger LOGGER;
@@ -70,6 +72,25 @@ public class Loader {
             startupServer(rootConfig, config2Definition);
         } catch (Exception e) {
             throw new RuntimeException("Failed to start up servers!", e);
+        }
+
+        if (DEV_MODE) {
+            Thread thread = new Thread(Loader::periodicDevTasks);
+            thread.setPriority(3);
+            thread.setName("Periodic Dev Tasks Runner");
+            thread.setDaemon(true);
+            thread.start();
+        }
+    }
+
+    private static void periodicDevTasks() {
+        while (true) {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                // huh
+            }
+            FileHolder.reloadAll();
         }
     }
 
