@@ -16,6 +16,14 @@
               "Cache-Control": "no-cache"
             }
           }
+        ],
+        "redirectInfos":
+        [
+          {
+            "from": "/",
+            "to": "/test.html",
+            "permanent": false
+          }
         ]
       }
     }

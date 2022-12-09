@@ -5,6 +5,7 @@ import de.umweltcampus.webservices.file.FileServerModule;
 import de.umweltcampus.webservices.file.compress.CompressionStrategy;
 import de.umweltcampus.webservices.internal.builtin.config.FolderInfo;
 import de.umweltcampus.webservices.internal.builtin.config.SimpleFileServerConfig;
+import de.umweltcampus.webservices.service.RedirectInfo;
 import de.umweltcampus.webservices.service.WebserviceBase;
 
 import java.nio.file.Paths;
@@ -33,6 +34,8 @@ public class SimpleFileServer extends WebserviceBase {
             });
         }
         simpleFileServer.setFileServers(modules);
+        if (config.actualRedirectInfos != null)
+            simpleFileServer.setRedirectInfos(config.actualRedirectInfos.toArray(RedirectInfo[]::new));
         return simpleFileServer;
     }
 }

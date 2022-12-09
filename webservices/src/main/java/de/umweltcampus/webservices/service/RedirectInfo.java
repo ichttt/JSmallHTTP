@@ -10,6 +10,7 @@ public class RedirectInfo {
     public final Status codeToUse;
 
     public RedirectInfo(String from, String to, Status codeToUse) {
+        if (from.equals(to)) throw new IllegalArgumentException("From equals to!");
         this.from = from;
         this.to = to;
         this.locationHeader = PrecomputedHeader.create("Location", to);
