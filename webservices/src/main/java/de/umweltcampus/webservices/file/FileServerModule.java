@@ -119,7 +119,10 @@ public class FileServerModule {
 
             String allowedEncodings = request.getSingleHeader("accept-encoding");
             if (compressor != null) {
-                resolved = compressor.getPathInCompressed(allowedEncodings, subPath, resolved, srcLastModifiedTime, headerWriter);
+                Path pathInCompressed = compressor.getPathInCompressed(allowedEncodings, subPath, resolved, srcLastModifiedTime, headerWriter);
+                if (pathInCompressed != null) {
+                    resolved = pathInCompressed;
+                }
             }
             if (this.additionalHeaderAdder != null) {
                 this.additionalHeaderAdder.accept(request, headerWriter);
