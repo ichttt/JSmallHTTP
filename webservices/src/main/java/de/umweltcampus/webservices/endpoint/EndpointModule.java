@@ -75,7 +75,12 @@ public class EndpointModule<SRV extends WebserviceBase, T extends BaseEndpoint<S
             return endpoint.answerRequest(request, responseStartWriter);
         } catch (RuntimeException e) {
             LOGGER.warn("Internal Endpoint error", e);
-            return responseStartWriter.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN).writeBodyAndFlush("Unknown Endpoint failure");
+            if (responseStartWriter.canResetResponseWriter()) {
+                responseStartWriter = responseStartWriter.resetResponseBuilder();
+                return responseStartWriter.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN).writeBodyAndFlush("Unknown Endpoint failure");
+            } else {
+                throw e;
+            }
         }
     }
 
