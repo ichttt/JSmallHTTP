@@ -94,43 +94,46 @@ public class FileServerModule {
                         .writeBodyAndFlush("Only GET and HEAD are supported for files!");
             }
 
-            FileTime srcLastModifiedTime;
-            try {
-                srcLastModifiedTime = Files.getLastModifiedTime(resolved);
-            } catch (IOException e) {
-                LOGGER.error("Failed to read last modified time {} for path {}", resolved, path, e);
-                return writer.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN)
-                        .writeBodyAndFlush("An error occurred while reading the file");
-            }
-            String ifModifiedSince = request.getSingleHeader("if-modified-since");
-            String lastModified = ResponseDateFormatter.format(LocalDateTime.ofInstant(srcLastModifiedTime.toInstant(), GMT));
-            if (ifModifiedSince != null && ifModifiedSince.equals(lastModified)) {
-                // See https://httpwg.org/specs/rfc9110.html#status.304
-                return writer.respondWithoutContentType(Status.NOT_MODIFIED).sendWithoutBody();
-            }
-
-
-            String mime = URLConnection.guessContentTypeFromName(resolved.getFileName().toString());
-            if (mime == null) mime = CommonContentTypes.BINARY_DATA.mimeType; // use this as a catch-all for unknown types
-
-            ResponseHeaderWriter headerWriter = writer.respond(Status.OK, mime);
-
-            headerWriter.addHeader(LAST_MODIFIED, lastModified);
-
-            String allowedEncodings = request.getSingleHeader("accept-encoding");
-            if (compressor != null) {
-                Path pathInCompressed = compressor.getPathInCompressed(allowedEncodings, subPath, resolved, srcLastModifiedTime, headerWriter);
-                if (pathInCompressed != null) {
-                    resolved = pathInCompressed;
-                }
-            }
-            if (this.additionalHeaderAdder != null) {
-                this.additionalHeaderAdder.accept(request, headerWriter);
-            }
-
-            return sendFile(resolved, method, headerWriter);
+            return serveValidFile(request, writer, subPath, resolved, method);
         }
         return null;
+    }
+
+    protected ResponseToken serveValidFile(HTTPRequest request, ResponseStartWriter writer, String subPath, Path toServe, Method method) throws HTTPWriteException {
+        FileTime srcLastModifiedTime;
+        try {
+            srcLastModifiedTime = Files.getLastModifiedTime(toServe);
+        } catch (IOException e) {
+            LOGGER.error("Failed to read last modified time {}", toServe, e);
+            return writer.respond(Status.INTERNAL_SERVER_ERROR, CommonContentTypes.PLAIN)
+                    .writeBodyAndFlush("An error occurred while reading the file");
+        }
+        String ifModifiedSince = request.getSingleHeader("if-modified-since");
+        String lastModified = ResponseDateFormatter.format(LocalDateTime.ofInstant(srcLastModifiedTime.toInstant(), GMT));
+        if (ifModifiedSince != null && ifModifiedSince.equals(lastModified)) {
+            // See https://httpwg.org/specs/rfc9110.html#status.304
+            return writer.respondWithoutContentType(Status.NOT_MODIFIED).sendWithoutBody();
+        }
+
+        String mime = URLConnection.guessContentTypeFromName(toServe.getFileName().toString());
+        if (mime == null) mime = CommonContentTypes.BINARY_DATA.mimeType; // use this as a catch-all for unknown types
+
+        ResponseHeaderWriter headerWriter = writer.respond(Status.OK, mime);
+
+        headerWriter.addHeader(LAST_MODIFIED, lastModified);
+
+        String allowedEncodings = request.getSingleHeader("accept-encoding");
+        if (compressor != null) {
+            Path pathInCompressed = compressor.getPathInCompressed(allowedEncodings, subPath, toServe, srcLastModifiedTime, headerWriter);
+            if (pathInCompressed != null) {
+                toServe = pathInCompressed;
+            }
+        }
+        if (this.additionalHeaderAdder != null) {
+            this.additionalHeaderAdder.accept(request, headerWriter);
+        }
+
+        return sendFile(toServe, method, headerWriter);
     }
 
     public static ResponseToken sendFile(Path toSend, Method requestMethod, ResponseHeaderWriter headerWriter) throws HTTPWriteException {
