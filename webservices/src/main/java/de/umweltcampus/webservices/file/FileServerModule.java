@@ -37,10 +37,10 @@ public class FileServerModule {
     private static final PrecomputedHeader ALLOW_HEADER = PrecomputedHeader.create("Allow", Stream.of(Method.OPTIONS, Method.GET, Method.HEAD).map(Enum::name).collect(Collectors.joining(", ")));
     private static final PrecomputedHeaderKey LAST_MODIFIED = PrecomputedHeaderKey.create("Last-Modified");
     private static final ZoneId GMT = ZoneId.of("GMT");
-    private final Path baseDirToServe;
-    private final String prefixToServe;
-    private final FileCompressor compressor;
-    private final BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder;
+    protected final Path baseDirToServe;
+    protected final String prefixToServe;
+    protected final FileCompressor compressor;
+    protected final BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder;
 
     /**
      * Creates a new file serving module that sends files from the specified folder to the client if the request starts with the specified prefix.
@@ -68,35 +68,35 @@ public class FileServerModule {
         }
     }
 
-    public ResponseToken serveFileIfHandled(HTTPRequest request, ResponseStartWriter writer) throws HTTPWriteException {
-        String path = request.getPath();
-        if (path.startsWith(prefixToServe)) {
-            String subPath = path.substring(prefixToServe.length());
-            Path resolved = baseDirToServe.resolve(subPath).toAbsolutePath();
-            boolean invalid = subPath.startsWith("/") || subPath.contains("..") || !resolved.startsWith(baseDirToServe);
-            if (invalid) {
-                return writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Invalid path");
-            }
+    public boolean isHandled(HTTPRequest request) {
+        return request.getPath().startsWith(prefixToServe);
+    }
 
-            if (subPath.isBlank() || !Files.isRegularFile(resolved)) {
-                return null;
-            }
-
-            Method method = request.getMethod();
-            if (method == Method.OPTIONS) {
-                return writer.respondWithoutContentType(Status.NO_CONTENT)
-                        .addHeader(ALLOW_HEADER)
-                        .sendWithoutBody();
-            }
-            if (method != Method.GET && method != Method.HEAD) {
-                return writer.respond(Status.METHOD_NOT_ALLOWED, CommonContentTypes.PLAIN)
-                        .addHeader(ALLOW_HEADER)
-                        .writeBodyAndFlush("Only GET and HEAD are supported for files!");
-            }
-
-            return serveValidFile(request, writer, subPath, resolved, method);
+    public ResponseToken serveFile(HTTPRequest request, ResponseStartWriter writer) throws HTTPWriteException {
+        String subPath = request.getPath().substring(prefixToServe.length());
+        Path resolved = baseDirToServe.resolve(subPath).toAbsolutePath();
+        boolean invalid = subPath.startsWith("/") || subPath.contains("..") || !resolved.startsWith(baseDirToServe);
+        if (invalid) {
+            return writer.respond(Status.BAD_REQUEST, CommonContentTypes.PLAIN).writeBodyAndFlush("Invalid path");
         }
-        return null;
+
+        if (subPath.isBlank() || !Files.isRegularFile(resolved)) {
+            return null;
+        }
+
+        Method method = request.getMethod();
+        if (method == Method.OPTIONS) {
+            return writer.respondWithoutContentType(Status.NO_CONTENT)
+                    .addHeader(ALLOW_HEADER)
+                    .sendWithoutBody();
+        }
+        if (method != Method.GET && method != Method.HEAD) {
+            return writer.respond(Status.METHOD_NOT_ALLOWED, CommonContentTypes.PLAIN)
+                    .addHeader(ALLOW_HEADER)
+                    .writeBodyAndFlush("Only GET and HEAD are supported for files!");
+        }
+
+        return serveValidFile(request, writer, subPath, resolved, method);
     }
 
     protected ResponseToken serveValidFile(HTTPRequest request, ResponseStartWriter writer, String subPath, Path toServe, Method method) throws HTTPWriteException {

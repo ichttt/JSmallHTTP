@@ -58,9 +58,11 @@ public abstract class WebserviceBase implements RequestHandler {
         }
 
         for (FileServerModule fileServer : fileServers) {
-            ResponseToken token = fileServer.serveFileIfHandled(request, responseWriter);
-            if (token != null) {
-                return token;
+            if (fileServer.isHandled(request)) {
+                ResponseToken token = fileServer.serveFile(request, responseWriter);
+                if (token != null) {
+                    return token;
+                }
             }
         }
 
