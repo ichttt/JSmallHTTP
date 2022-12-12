@@ -12,8 +12,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -41,14 +39,14 @@ public class ResourceFileServer {
     public static FileServerModule createModule(WebserviceBase webservice, String prefixToServe, String pathInService, BiConsumer<HTTPRequest, ResponseHeaderWriter> additionalHeaderAdder) {
         Path pathToServe;
         try {
-            pathToServe = copyFiles(webservice, pathInService);
+            pathToServe = copyFilesToTemp(webservice, pathInService);
         } catch (Exception e) {
             throw new RuntimeException("Failed to copy files for module " + webservice.getName(), e);
         }
         return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(Loader.DEV_MODE, true), webservice, additionalHeaderAdder);
     }
 
-    private static Path copyFiles(WebserviceBase webservice, String pathInService) throws IOException {
+    public static Path copyFilesToTemp(WebserviceBase webservice, String pathInService) throws IOException {
         if (pathInService.startsWith("/")) {
             pathInService = pathInService.substring(1);
         }
