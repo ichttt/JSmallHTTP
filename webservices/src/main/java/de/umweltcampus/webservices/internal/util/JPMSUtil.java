@@ -1,13 +1,16 @@
 package de.umweltcampus.webservices.internal.util;
 
-import de.umweltcampus.webservices.file.ResourceFileServer;
-
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class JPMSUtil {
@@ -66,5 +69,14 @@ public class JPMSUtil {
             }
         }
         return resolved;
+    }
+
+    public static FileSystem openFileSystemFor(Class<?> clazz) throws IOException {
+        URL location = getLocation(clazz);
+        String file = location.getFile();
+        if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
+            file = file.substring(1); // Strip initial slash, windows has no root, but different letters for its drives. URL doesn't know this and thus returns an invalid windows path with a starting slash
+        }
+        return FileSystems.newFileSystem(Paths.get(file), Map.of(), clazz.getClassLoader());
     }
 }

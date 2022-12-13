@@ -12,15 +12,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
@@ -57,8 +52,7 @@ public class ResourceFileServer {
 
         switch (sourceTypeForClass) {
             case JAR -> {
-                URL location = JPMSUtil.getLocation(webserviceClass);
-                return copyJarSource(webservice, pathInService, location).toRealPath();
+                return copyJarSource(webservice, pathInService).toRealPath();
             }
             case EXPLODED_DIR -> {
                 // We actually don't even need to copy the dir, we are already working on an exploded directory
@@ -68,12 +62,8 @@ public class ResourceFileServer {
         }
     }
 
-    private static Path copyJarSource(WebserviceBase webservice, String pathInService, URL location) throws IOException {
-        String file = location.getFile();
-        if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
-            file = file.substring(1); // Strip initial slash, windows has no root, but different letters for its drives. URL doesn't know this and thus returns an invalid windows path with a starting slash
-        }
-        try (FileSystem fileSystem = FileSystems.newFileSystem(Paths.get(file), Map.of(), webservice.getClass().getClassLoader())) {
+    private static Path copyJarSource(WebserviceBase webservice, String pathInService) throws IOException {
+        try (FileSystem fileSystem = JPMSUtil.openFileSystemFor(webservice.getClass())) {
             Path rootInFs = fileSystem.getPath(pathInService);
             List<Path> paths;
             try (Stream<Path> pathStream = Files.walk(rootInFs)) {
@@ -84,6 +74,7 @@ public class ResourceFileServer {
                 if (Files.isDirectory(source)) continue;
                 String relativePath = rootInFs.relativize(source).toString();
                 Path pathInTarget = targetDir.resolve(relativePath);
+                Files.createDirectories(pathInTarget.getParent());
                 Files.copy(source, pathInTarget);
             }
 

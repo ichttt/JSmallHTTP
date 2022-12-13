@@ -12,11 +12,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
-import java.util.*;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 public class FileHolder {
     private static final Logger LOGGER = LogManager.getLogger(FileHolder.class);
@@ -53,6 +58,7 @@ public class FileHolder {
     }
 
     public FileHolder(String fileBase, WebserviceBase webserviceBase, String[] patterns) {
+        if (!fileBase.startsWith("/")) throw new IllegalArgumentException("File must be an absolute path in the jar!");
         this.path = fileBase;
         this.webserviceBase = webserviceBase;
         this.patterns = patterns;
@@ -79,8 +85,10 @@ public class FileHolder {
 
         switch (sourceType) {
             case JAR -> {
-                InputStream fileInputStream = Objects.requireNonNull(webserviceClass.getResourceAsStream(path));
-                baseSite = new String(fileInputStream.readAllBytes(), StandardCharsets.UTF_8);
+                try (FileSystem fileSystem = JPMSUtil.openFileSystemFor(webserviceClass)) {
+                    Path pathInJar = fileSystem.getPath(path.substring(1));
+                    baseSite = Files.readString(pathInJar, StandardCharsets.UTF_8);
+                }
             }
             case EXPLODED_DIR -> {
                 baseSite = Files.readString(JPMSUtil.getPathInExplodedDirectorySource(path, webserviceClass), StandardCharsets.UTF_8);
