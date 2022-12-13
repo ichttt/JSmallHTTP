@@ -1,7 +1,9 @@
-import de.umweltcampus.webservices.internal.builtin.BuiltinServiceProvider;
+import de.umweltcampus.webservices.builtin.BuiltinServiceProvider;
 import de.umweltcampus.webservices.service.ServiceProvider;
 
 module de.umweltcampus.webservices {
+    exports de.umweltcampus.webservices.builtin;
+    exports de.umweltcampus.webservices.builtin.config;
     exports de.umweltcampus.webservices.config.service;
     exports de.umweltcampus.webservices.endpoint;
     exports de.umweltcampus.webservices.file;
@@ -9,7 +11,6 @@ module de.umweltcampus.webservices {
     exports de.umweltcampus.webservices.service;
 
     // for config deserialization
-    exports de.umweltcampus.webservices.internal.builtin.config to com.google.gson;
     exports de.umweltcampus.webservices.config.server to com.google.gson;
 
     opens de.umweltcampus.webservices.internal.loader;

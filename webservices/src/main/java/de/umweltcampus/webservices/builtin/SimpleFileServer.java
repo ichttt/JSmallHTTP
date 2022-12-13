@@ -1,10 +1,10 @@
-package de.umweltcampus.webservices.internal.builtin;
+package de.umweltcampus.webservices.builtin;
 
 import de.umweltcampus.smallhttp.header.PrecomputedHeader;
+import de.umweltcampus.webservices.builtin.config.FolderInfo;
+import de.umweltcampus.webservices.builtin.config.SimpleFileServerConfig;
 import de.umweltcampus.webservices.file.FileServerModule;
 import de.umweltcampus.webservices.file.compress.CompressionStrategy;
-import de.umweltcampus.webservices.internal.builtin.config.FolderInfo;
-import de.umweltcampus.webservices.internal.builtin.config.SimpleFileServerConfig;
 import de.umweltcampus.webservices.service.RedirectInfo;
 import de.umweltcampus.webservices.service.WebserviceBase;
 

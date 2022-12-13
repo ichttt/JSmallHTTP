@@ -1,4 +1,4 @@
-package de.umweltcampus.webservices.internal.builtin.config;
+package de.umweltcampus.webservices.builtin.config;
 
 import java.util.Map;
 
