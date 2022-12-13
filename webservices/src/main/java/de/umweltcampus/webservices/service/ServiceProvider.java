@@ -4,6 +4,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The root class that defines a webservice provider to the webservice system.
+ * An implementation of this should be as a service provider in the module-info using the "provides" keyword so the loader can find it at runtime.
+ */
 public interface ServiceProvider {
 
     /**

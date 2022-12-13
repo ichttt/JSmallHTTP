@@ -13,5 +13,11 @@ public class BaseServiceConfig {
         this.serviceIdentifier = serviceIdentifier;
     }
 
+    /**
+     * Called when the config has been parsed and before the config is feed to the service.
+     * Custom implementation may want to validate their configuration, throwing an {@link InvalidConfigValueException} if it is invalid.
+     * If a {@link InvalidConfigValueException} is encountered, the entire application will be shut down and an error will be logged to the console.
+     * @throws InvalidConfigValueException If the config contains invalid values
+     */
     public void validateConfig() throws InvalidConfigValueException {}
 }

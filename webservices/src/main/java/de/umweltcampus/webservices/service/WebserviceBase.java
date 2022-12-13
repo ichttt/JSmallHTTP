@@ -7,6 +7,7 @@ import de.umweltcampus.smallhttp.header.CommonContentTypes;
 import de.umweltcampus.smallhttp.response.HTTPWriteException;
 import de.umweltcampus.smallhttp.response.ResponseStartWriter;
 import de.umweltcampus.smallhttp.response.ResponseToken;
+import de.umweltcampus.webservices.config.service.BaseServiceConfig;
 import de.umweltcampus.webservices.endpoint.EndpointModule;
 import de.umweltcampus.webservices.file.FileServerModule;
 import org.apache.logging.log4j.LogManager;
@@ -14,6 +15,10 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.Objects;
 
+/**
+ * This class is the basis for every webservices defined in a {@link ServiceProvider}.
+ * It is responsible for delegating the request to the responsible handler.
+ */
 public abstract class WebserviceBase implements RequestHandler {
     private static final Logger LOGGER = LogManager.getLogger(WebserviceBase.class);
     private EndpointModule<?, ?> endpointModule;
@@ -21,19 +26,35 @@ public abstract class WebserviceBase implements RequestHandler {
     private RedirectInfo[] redirectInfos = new RedirectInfo[0];
     protected String name;
 
+    /**
+     * Constructs a new webservice
+     * @param name The name of the service instance, typically provided by {@link WebserviceDefinition#createNew(BaseServiceConfig, String)}
+     */
     public WebserviceBase(String name) {
         this.name = Objects.requireNonNull(name);
     }
 
+    /**
+     * Sets an endpoint module that can handle requests using dynamic endpoints
+     * @param endpointModule The new module
+     */
     protected void setEndpointModule(EndpointModule<?, ?> endpointModule) {
         this.endpointModule = Objects.requireNonNull(endpointModule);
         endpointModule.fillContext(this);
     }
 
+    /**
+     * Sets an array of file servers that can handle requests using static files
+     * @param fileServers The new modules
+     */
     protected void setFileServers(FileServerModule... fileServers) {
         this.fileServers = Objects.requireNonNull(fileServers);
     }
 
+    /**
+     * Sets a list of redirect the server should handle when the specified "from" request target is seen
+     * @param redirectInfos The new redirect infos
+     */
     protected void setRedirectInfos(RedirectInfo... redirectInfos) {
         this.redirectInfos = Objects.requireNonNull(redirectInfos);
     }
