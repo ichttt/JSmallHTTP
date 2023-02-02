@@ -6,12 +6,16 @@ import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
  * Base class for all custom configuration classes.
  * Configuration classes will be instantiated through {@link com.google.gson.Gson#fromJson(java.io.Reader, Class)},
  */
-public class BaseServiceConfig {
+public abstract sealed class BaseServiceConfig permits MultiInstanceServiceConfig, SingleInstanceServiceConfig {
     public final String serviceIdentifier;
+    public final boolean autostart;
 
-    public BaseServiceConfig(String serviceIdentifier) {
+    public BaseServiceConfig(String serviceIdentifier, boolean autostart) {
         this.serviceIdentifier = serviceIdentifier;
+        this.autostart = autostart;
     }
+
+    public abstract String getInstanceName();
 
     /**
      * Called when the config has been parsed and before the config is feed to the service.

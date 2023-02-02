@@ -1,7 +1,10 @@
 package de.nocoffeetech.webservices.core.service;
 
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
+import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConfig;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -11,21 +14,20 @@ import java.util.function.BiFunction;
 public final class WebserviceDefinition <T extends BaseServiceConfig> {
     private final String name;
     private final Class<T> configClass;
-    private final boolean singleInstanceOnly;
     private final BiFunction<T, String, WebserviceBase> webserviceCreator;
+    private List<ContinuousBackgroundTask> backgroundTasks;
 
     /**
      * Defines the name and configuration webservice
      * @param name The name of the service
      * @param configClass The configuration class that allows specialized
-     * @param singleInstanceOnly True if only zero or one instances of this service at once are allowed, false if multiple instances are valid
      * @param webserviceCreator A function that returns a new instance of the defined webservice with the given config
      */
-    public WebserviceDefinition(String name, Class<T> configClass, boolean singleInstanceOnly, BiFunction<T, String, WebserviceBase> webserviceCreator) {
+    public WebserviceDefinition(String name, Class<T> configClass, BiFunction<T, String, WebserviceBase> webserviceCreator, ContinuousBackgroundTask... backgroundTasks) {
         this.name = Objects.requireNonNull(name, "No name provided!");
         this.configClass = Objects.requireNonNull(configClass, "No config class provided!");
-        this.singleInstanceOnly = singleInstanceOnly;
         this.webserviceCreator = webserviceCreator;
+        this.backgroundTasks = List.of(backgroundTasks);
     }
 
     public String getName() {
@@ -36,8 +38,8 @@ public final class WebserviceDefinition <T extends BaseServiceConfig> {
         return configClass;
     }
 
-    public boolean isSingleInstanceOnly() {
-        return singleInstanceOnly;
+    public List<ContinuousBackgroundTask> getBackgroundTasks() {
+        return this.backgroundTasks;
     }
 
     public WebserviceBase createNew(BaseServiceConfig config, String name) {

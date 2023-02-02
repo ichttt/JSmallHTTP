@@ -5,23 +5,19 @@ import de.nocoffeetech.webservices.core.config.server.RootConfig;
 import de.nocoffeetech.webservices.core.config.server.ServerConfig;
 import de.nocoffeetech.webservices.core.config.server.VirtualServerConfig;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
+import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConfig;
 import de.nocoffeetech.webservices.core.file.FileHolder;
 import de.nocoffeetech.webservices.core.internal.WebserviceLookup;
 import de.nocoffeetech.webservices.core.internal.config.Configuration;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
-import de.nocoffeetech.webservices.core.service.WebserviceBase;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
-import de.nocoffeetech.webservices.core.internal.server.SmallHTTPErrorHandler;
-import de.nocoffeetech.smallhttp.base.HTTPServer;
-import de.nocoffeetech.smallhttp.base.HTTPServerBuilder;
+import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
+import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class Loader {
     public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
@@ -68,11 +64,13 @@ public class Loader {
 
         webservices.initServices(config2Definition.values());
 
+        List<ServiceHolder<?>> services;
         try {
-            startupServer(rootConfig, config2Definition);
+            services = createServices(rootConfig, config2Definition);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to start up servers!", e);
+            throw new RuntimeException("Failed to create service holders!", e);
         }
+        ServiceHolderLookup.setServices(services);
 
         if (DEV_MODE) {
             Thread thread = new Thread(Loader::periodicDevTasks);
@@ -96,20 +94,28 @@ public class Loader {
 
     private static Map<BaseServiceConfig, WebserviceDefinition<?>> collectConfigs(RootConfig rootConfig, WebserviceLookup lookup) {
         Map<BaseServiceConfig, WebserviceDefinition<?>> allConfigs = new HashMap<>();
+        Set<String> instanceNames = new HashSet<>();
 
         for (ServerConfig serverConfig : rootConfig.servers) {
             List<BaseServiceConfig> configsForServer = serverConfig.gatherServices();
             for (BaseServiceConfig baseServiceConfig : configsForServer) {
                 try {
                     baseServiceConfig.validateConfig();
-                } catch (InvalidConfigValueException e) {;
+                } catch (InvalidConfigValueException e) {
                     throw new RuntimeException("Config validation of service " + baseServiceConfig.serviceIdentifier + " failed!", e);
                 }
                 WebserviceDefinition<?> definition = lookup.getFromSpec(baseServiceConfig.serviceIdentifier);
-                if (definition.isSingleInstanceOnly()) {
+                if (baseServiceConfig instanceof SingleInstanceServiceConfig) {
                     if (allConfigs.containsValue(definition)) {
                         throw new RuntimeException("Single Instance service " + baseServiceConfig.serviceIdentifier + " has been configured multiple times!");
                     }
+                }
+                String instanceName = baseServiceConfig.getInstanceName();
+                if (instanceName == null) {
+                    throw new RuntimeException("Missing required parameter instanceName!");
+                }
+                if (!instanceNames.add(instanceName)) {
+                    throw new RuntimeException("Instance name " + instanceName + " has been configured for two services!");
                 }
                 allConfigs.put(baseServiceConfig, definition);
             }
@@ -118,24 +124,19 @@ public class Loader {
         return allConfigs;
     }
 
-    private static void startupServer(RootConfig config, Map<BaseServiceConfig, WebserviceDefinition<?>> gatheredConfigs) throws IOException {
+    private static List<ServiceHolder<?>> createServices(RootConfig config, Map<BaseServiceConfig, WebserviceDefinition<?>> gatheredConfigs) throws IOException {
+        List<ServiceHolder<?>> serviceHolders = new ArrayList<>();
         for (ServerConfig serverConfig : config.servers) {
             if (serverConfig instanceof RealServerConfig realServerConfig) {
-                BaseServiceConfig service = realServerConfig.service;
-                WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(service));
-
-                String serviceIdentifier = service.serviceIdentifier;
-                WebserviceBase webservice = definition.createNew(service, serviceIdentifier + "-" + realServerConfig.port);
-                HTTPServer server = HTTPServerBuilder
-                        .create(realServerConfig.port, webservice)
-                        .setErrorHandler(new SmallHTTPErrorHandler(serviceIdentifier))
-                        .build();
-                LOGGER.info("Started {}", webservice.getName());
+                BaseServiceConfig serviceConfig = realServerConfig.service;
+                WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(serviceConfig));
+                serviceHolders.add(new ServiceHolder<>(definition, realServerConfig, serviceConfig));
             } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
                 throw new RuntimeException("Virtual server config not yet implemented!");
             } else {
                 throw new RuntimeException("Invalid configuration of type " + serverConfig.getClass());
             }
         }
+        return serviceHolders;
     }
 }

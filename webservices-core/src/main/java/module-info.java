@@ -9,6 +9,7 @@ module de.nocoffeetech.webservices.core {
     exports de.nocoffeetech.webservices.core.file;
     exports de.nocoffeetech.webservices.core.file.compress;
     exports de.nocoffeetech.webservices.core.service;
+    exports de.nocoffeetech.webservices.core.service.holder;
 
     // for config deserialization
     exports de.nocoffeetech.webservices.core.config.server to com.google.gson;

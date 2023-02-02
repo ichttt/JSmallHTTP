@@ -36,7 +36,7 @@ public class ResourceFileServer {
         try {
             pathToServe = copyFilesToTemp(webservice, pathInService);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to copy files for module " + webservice.getName(), e);
+            throw new RuntimeException("Failed to copy files for module " + webservice.getInstanceName(), e);
         }
         return new FileServerModule(pathToServe, prefixToServe, CompressionStrategy.compressAndStore(Loader.DEV_MODE, true), webservice, additionalHeaderAdder);
     }
@@ -69,7 +69,7 @@ public class ResourceFileServer {
             try (Stream<Path> pathStream = Files.walk(rootInFs)) {
                 paths = pathStream.toList();
             }
-            Path targetDir = TempDirHelper.createTempPathFor(webservice.getName(), pathInService);
+            Path targetDir = TempDirHelper.createTempPathFor(webservice.getInstanceName(), pathInService);
             for (Path source : paths) {
                 if (Files.isDirectory(source)) continue;
                 String relativePath = rootInFs.relativize(source).toString();
@@ -78,7 +78,7 @@ public class ResourceFileServer {
                 Files.copy(source, pathInTarget);
             }
 
-            LOGGER.info("Processed {} files for service {}", paths.size(), webservice.getName());
+            LOGGER.info("Processed {} files for service {}", paths.size(), webservice.getInstanceName());
             return targetDir;
         }
     }

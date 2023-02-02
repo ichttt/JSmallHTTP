@@ -31,11 +31,6 @@ public class BaseServiceConfigAdapter implements JsonDeserializer<BaseServiceCon
             throw new RuntimeException("Failed to find service for spec " + serviceIdentifier, e);
         }
 
-        Class<? extends BaseServiceConfig> configClass = definition.getConfigClass();
-        if (configClass == BaseServiceConfig.class) {
-            // special case: parse by hand, as otherwise we recursively try to resolve the actual class
-            return new BaseServiceConfig(serviceIdentifier);
-        }
-        return context.deserialize(root, configClass);
+        return context.deserialize(root, definition.getConfigClass());
     }
 }

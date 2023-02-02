@@ -18,35 +18,35 @@ import java.util.concurrent.RejectedExecutionException;
 
 public class SmallHTTPErrorHandler implements ErrorHandler {
     private static final Logger LOGGER = LogManager.getLogger(SmallHTTPErrorHandler.class);
-    private final String serviceName;
+    private final String instanceName;
 
-    public SmallHTTPErrorHandler(String serviceName) {
-        this.serviceName = serviceName;
+    public SmallHTTPErrorHandler(String instanceName) {
+        this.instanceName = instanceName;
     }
 
     @Override
     public void onListenerInternalException(HTTPServer server, Throwable exception) {
-        LOGGER.fatal("Internal error in server of service {} - Shutting down that service!", serviceName, exception);
+        LOGGER.fatal("Internal error in server of service {} - Shutting down that service!", instanceName, exception);
         try {
             server.shutdown(false);
         } catch (IOException ex) {
-            LOGGER.fatal("Failed to shut down service {}", serviceName, ex);
+            LOGGER.fatal("Failed to shut down service {}", instanceName, ex);
         }
     }
 
     @Override
     public void onWatchdogInternalException(HTTPServer server, Throwable exception) {
-        LOGGER.fatal("Internal error in watchdog of service {} - Shutting down that service!", serviceName, exception);
+        LOGGER.fatal("Internal error in watchdog of service {} - Shutting down that service!", instanceName, exception);
         try {
             server.shutdown(false);
         } catch (IOException ex) {
-            LOGGER.fatal("Failed to shut down service {}", serviceName, ex);
+            LOGGER.fatal("Failed to shut down service {}", instanceName, ex);
         }
     }
 
     @Override
     public void onNoAvailableThreadForConnection(HTTPServer server, Socket socket, RejectedExecutionException exception) {
-        LOGGER.warn("No socket available for new connection to service {}", serviceName);
+        LOGGER.warn("No socket available for new connection to service {}", instanceName);
         try {
             socket.close();
         } catch (IOException ignored) {}
@@ -55,17 +55,17 @@ public class SmallHTTPErrorHandler implements ErrorHandler {
     @Override
     public void onClientHandlerInternalException(HTTPServer server, Socket socket, Exception e) {
         if (e instanceof SocketException) return; // ignore
-        LOGGER.error("Internal error in client handler for service {}", serviceName, e);
+        LOGGER.error("Internal error in client handler for service {}", instanceName, e);
     }
 
     @Override
     public ResponseToken onResponseHandlerException(HTTPServer server, HTTPRequest request, ResponseStartWriter writer, Socket socket, Exception e) {
         if (e instanceof HTTPWriteException) {
             if (e.getCause() instanceof SocketException) return null; // ignore
-            LOGGER.debug("HTTPWriteException in service {} - probably the client disconnected", serviceName, e);
+            LOGGER.debug("HTTPWriteException in service {} - probably the client disconnected", instanceName, e);
             return null;
         }
-        LOGGER.error("Uncaught exception in service {} response handler", serviceName, e);
+        LOGGER.error("Uncaught exception in service {} response handler", instanceName, e);
         // try sending a last resort 500 internal service error if possible
         if (writer.canResetResponseWriter()) {
             try {
@@ -81,6 +81,6 @@ public class SmallHTTPErrorHandler implements ErrorHandler {
 
     @Override
     public void onExternalTimeoutCloseFailed(HTTPServer server, Socket socket, Exception e) {
-        LOGGER.error("Timeout close failed for service {}", serviceName, e);
+        LOGGER.error("Timeout close failed for service {}", instanceName, e);
     }
 }

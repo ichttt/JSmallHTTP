@@ -39,7 +39,7 @@ public class FileHolder {
                 try {
                     fileHolder.reload();
                 } catch (IOException e) {
-                    LOGGER.warn("Failed to reload holder for service {} and file {}", fileHolder.webserviceBase.getName(), fileHolder.path);
+                    LOGGER.warn("Failed to reload holder for service {} and file {}", fileHolder.webserviceBase.getInstanceName(), fileHolder.path);
                 }
             }
         }
@@ -70,7 +70,7 @@ public class FileHolder {
         synchronized (FileHolder.class) {
             ALL_HOLDER.add(this);
         }
-        LOGGER.debug("New holder registered for service {} and file {}", webserviceBase.getName(), fileBase);
+        LOGGER.debug("New holder registered for service {} and file {}", webserviceBase.getInstanceName(), fileBase);
     }
 
     /**

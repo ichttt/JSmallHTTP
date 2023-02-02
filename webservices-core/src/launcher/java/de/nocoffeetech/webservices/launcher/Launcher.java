@@ -1,4 +1,4 @@
-package de.nocoffeetech.webservices.core.launcher;
+package de.nocoffeetech.webservices.launcher;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;

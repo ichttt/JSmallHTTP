@@ -57,7 +57,7 @@ public class FileServerModule {
         this.baseDirToServe = baseDirToServe.toAbsolutePath();
         this.prefixToServe = prefixToServe.startsWith("/") ? prefixToServe : "/" + prefixToServe;
         if (compressionStrategy.compress) {
-            Path compressedFilesFolder = TempDirHelper.createTempPathFor(responsibleWebservice.getName(), prefixToServe);
+            Path compressedFilesFolder = TempDirHelper.createTempPathFor(responsibleWebservice.getInstanceName(), prefixToServe);
             compressor = new FileCompressor(compressionStrategy, baseDirToServe, compressedFilesFolder);
         } else {
             compressor = null; // unused

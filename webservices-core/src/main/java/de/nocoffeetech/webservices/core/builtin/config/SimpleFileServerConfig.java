@@ -1,6 +1,7 @@
 package de.nocoffeetech.webservices.core.builtin.config;
 
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
+import de.nocoffeetech.webservices.core.config.service.MultiInstanceServiceConfig;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.RedirectInfo;
 
@@ -10,19 +11,20 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SimpleFileServerConfig extends BaseServiceConfig {
+public class SimpleFileServerConfig extends MultiInstanceServiceConfig {
     public final List<FolderInfo> folderInfos;
     public final List<ConfigRedirectInfo> redirectInfos;
     public transient List<RedirectInfo> actualRedirectInfos;
 
-    public SimpleFileServerConfig(String serviceIdentifier, List<FolderInfo> folderInfos, List<ConfigRedirectInfo> redirectInfos) {
-        super(serviceIdentifier);
+    public SimpleFileServerConfig(String serviceIdentifier, boolean autostart, String instanceName, List<FolderInfo> folderInfos, List<ConfigRedirectInfo> redirectInfos) {
+        super(serviceIdentifier, autostart, instanceName);
         this.folderInfos = folderInfos;
         this.redirectInfos = redirectInfos;
     }
 
     @Override
     public void validateConfig() throws InvalidConfigValueException {
+        super.validateConfig();
         if (folderInfos == null || folderInfos.isEmpty()) throw new InvalidConfigValueException("folderInfos", "Missing or empty folderInfos!");
         for (int i = 0; i < folderInfos.size(); i++) {
             FolderInfo folderInfo = folderInfos.get(i);

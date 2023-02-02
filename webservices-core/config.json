@@ -6,6 +6,8 @@
       "port": "8080",
       "service": {
         "serviceIdentifier": "builtin:simple_fileserver",
+        "instanceName": "TestFileServer",
+        "autostart": true,
         "folderInfos":
         [
           {

@@ -24,14 +24,14 @@ public abstract class WebserviceBase implements RequestHandler {
     private EndpointModule<?, ?> endpointModule;
     private FileServerModule[] fileServers = new FileServerModule[0];
     private RedirectInfo[] redirectInfos = new RedirectInfo[0];
-    protected String name;
+    protected String instanceName;
 
     /**
      * Constructs a new webservice
-     * @param name The name of the service instance, typically provided by {@link WebserviceDefinition#createNew(BaseServiceConfig, String)}
+     * @param instanceName The name of the service instance, typically provided by {@link WebserviceDefinition#createNew(BaseServiceConfig, String)}
      */
-    public WebserviceBase(String name) {
-        this.name = Objects.requireNonNull(name);
+    public WebserviceBase(String instanceName) {
+        this.instanceName = Objects.requireNonNull(instanceName);
     }
 
     /**
@@ -59,14 +59,14 @@ public abstract class WebserviceBase implements RequestHandler {
         this.redirectInfos = Objects.requireNonNull(redirectInfos);
     }
 
-    public String getName() {
-        return this.name;
+    public String getInstanceName() {
+        return this.instanceName;
     }
 
     @Override
     public ResponseToken answerRequest(HTTPRequest request, ResponseStartWriter responseWriter) throws HTTPWriteException {
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("{}: Serving {}", name, request.getPath());
+            LOGGER.trace("{}: Serving {}", instanceName, request.getPath());
         }
 
         for (RedirectInfo redirectInfo : redirectInfos) {
