@@ -1,0 +1,141 @@
+package de.nocoffeetech.webservices.internal.loader;
+
+import de.nocoffeetech.webservices.config.server.RealServerConfig;
+import de.nocoffeetech.webservices.config.server.RootConfig;
+import de.nocoffeetech.webservices.config.server.ServerConfig;
+import de.nocoffeetech.webservices.config.server.VirtualServerConfig;
+import de.nocoffeetech.webservices.config.service.BaseServiceConfig;
+import de.nocoffeetech.webservices.file.FileHolder;
+import de.nocoffeetech.webservices.internal.WebserviceLookup;
+import de.nocoffeetech.webservices.internal.config.Configuration;
+import de.nocoffeetech.webservices.internal.server.SmallHTTPErrorHandler;
+import de.nocoffeetech.webservices.service.InvalidConfigValueException;
+import de.nocoffeetech.webservices.service.WebserviceBase;
+import de.nocoffeetech.webservices.service.WebserviceDefinition;
+import de.nocoffeetech.smallhttp.base.HTTPServer;
+import de.nocoffeetech.smallhttp.base.HTTPServerBuilder;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+public class Loader {
+    public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
+    private static final Logger LOGGER;
+
+    static {
+        long startTime = System.currentTimeMillis();
+        LOGGER = LogManager.getLogger(Loader.class);
+        long stopTime = System.currentTimeMillis();
+        LOGGER.debug("Started up log4j in {} ms", (stopTime - startTime));
+    }
+
+    /**
+     * Called from module launcher. DO NOT CHANGE SIGNATURE OR NAME! The loader holds a static reference to this
+     */
+    public static void init() {
+        if (DEV_MODE) {
+            LOGGER.warn("DEV MODE ENABLED");
+        } else {
+            LOGGER.debug("Starting in prod mode");
+        }
+        Thread.UncaughtExceptionHandler handler = (t, e) -> {
+            LOGGER.fatal("Uncaught exception in thread {}", t.getName(), e);
+            e.printStackTrace(); // also print the stacktrace, so we even get it if we are in shutdown and log4j already said goodbye
+        };
+        Thread.setDefaultUncaughtExceptionHandler(handler);
+        Thread.currentThread().setUncaughtExceptionHandler(handler);
+
+        if (DEV_MODE) {
+            System.setProperty("smallhttp.trackResponses", "true");
+        }
+
+        WebserviceLookup webservices = new WebserviceLookup();
+
+        Configuration configuration;
+        try {
+            configuration = new Configuration(webservices);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read config!", e);
+        }
+
+        RootConfig rootConfig = configuration.getRootConfig();
+        Map<BaseServiceConfig, WebserviceDefinition<?>> config2Definition = collectConfigs(rootConfig, webservices);
+
+        webservices.initServices(config2Definition.values());
+
+        try {
+            startupServer(rootConfig, config2Definition);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to start up servers!", e);
+        }
+
+        if (DEV_MODE) {
+            Thread thread = new Thread(Loader::periodicDevTasks);
+            thread.setPriority(3);
+            thread.setName("Periodic Dev Tasks Runner");
+            thread.setDaemon(true);
+            thread.start();
+        }
+    }
+
+    private static void periodicDevTasks() {
+        while (true) {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                // huh
+            }
+            FileHolder.reloadAll();
+        }
+    }
+
+    private static Map<BaseServiceConfig, WebserviceDefinition<?>> collectConfigs(RootConfig rootConfig, WebserviceLookup lookup) {
+        Map<BaseServiceConfig, WebserviceDefinition<?>> allConfigs = new HashMap<>();
+
+        for (ServerConfig serverConfig : rootConfig.servers) {
+            List<BaseServiceConfig> configsForServer = serverConfig.gatherServices();
+            for (BaseServiceConfig baseServiceConfig : configsForServer) {
+                try {
+                    baseServiceConfig.validateConfig();
+                } catch (InvalidConfigValueException e) {;
+                    throw new RuntimeException("Config validation of service " + baseServiceConfig.serviceIdentifier + " failed!", e);
+                }
+                WebserviceDefinition<?> definition = lookup.getFromSpec(baseServiceConfig.serviceIdentifier);
+                if (definition.isSingleInstanceOnly()) {
+                    if (allConfigs.containsValue(definition)) {
+                        throw new RuntimeException("Single Instance service " + baseServiceConfig.serviceIdentifier + " has been configured multiple times!");
+                    }
+                }
+                allConfigs.put(baseServiceConfig, definition);
+            }
+        }
+
+        return allConfigs;
+    }
+
+    private static void startupServer(RootConfig config, Map<BaseServiceConfig, WebserviceDefinition<?>> gatheredConfigs) throws IOException {
+        for (ServerConfig serverConfig : config.servers) {
+            if (serverConfig instanceof RealServerConfig realServerConfig) {
+                BaseServiceConfig service = realServerConfig.service;
+                WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(service));
+
+                String serviceIdentifier = service.serviceIdentifier;
+                WebserviceBase webservice = definition.createNew(service, serviceIdentifier + "-" + realServerConfig.port);
+                HTTPServer server = HTTPServerBuilder
+                        .create(realServerConfig.port, webservice)
+                        .setErrorHandler(new SmallHTTPErrorHandler(serviceIdentifier))
+                        .build();
+                LOGGER.info("Started {}", webservice.getName());
+            } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
+                throw new RuntimeException("Virtual server config not yet implemented!");
+            } else {
+                throw new RuntimeException("Invalid configuration of type " + serverConfig.getClass());
+            }
+        }
+    }
+}

@@ -6,7 +6,7 @@ plugins {
     id 'java-library'
 }
 
-group 'de.umweltcampus'
+group 'de.nocoffeetech'
 version '1.0.0'
 
 java {
@@ -16,7 +16,7 @@ java {
 }
 
 ext {
-    javaMainClass = "de.umweltcampus.webservices.launcher.Launcher"
+    javaMainClass = "de.nocoffeetech.webservices.launcher.Launcher"
 }
 
 repositories {

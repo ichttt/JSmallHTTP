@@ -4,7 +4,7 @@ plugins {
     id 'maven-publish'
 }
 
-group 'de.umweltcampus'
+group 'de.nocoffeetech'
 version '1.0.0'
 
 java {
