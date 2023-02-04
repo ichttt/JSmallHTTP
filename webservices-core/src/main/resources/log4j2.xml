@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="warn">
     <Appenders>
-        <Console name="Console">
+        <TerminalConsole name="Console">
             <PatternLayout pattern="%highlight{[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n}"/>
-        </Console>
+        </TerminalConsole>
         <RollingRandomAccessFile name="LogFile" fileName="logs/info.log" filePattern="logs/info-%i.log.gz">
             <PatternLayout pattern="[%d{dd.MM.yy HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n"/>
             <Policies>

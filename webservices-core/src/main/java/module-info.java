@@ -1,5 +1,7 @@
 import de.nocoffeetech.webservices.core.builtin.BuiltinServiceProvider;
 import de.nocoffeetech.webservices.core.service.ServiceProvider;
+import de.nocoffeetech.webservices.core.terminal.BuiltinCommandProvider;
+import de.nocoffeetech.webservices.core.terminal.api.CommandProvider;
 
 module de.nocoffeetech.webservices.core {
     exports de.nocoffeetech.webservices.core.builtin;
@@ -10,6 +12,7 @@ module de.nocoffeetech.webservices.core {
     exports de.nocoffeetech.webservices.core.file.compress;
     exports de.nocoffeetech.webservices.core.service;
     exports de.nocoffeetech.webservices.core.service.holder;
+    exports de.nocoffeetech.webservices.core.terminal.api;
 
     // for config deserialization
     exports de.nocoffeetech.webservices.core.config.server to com.google.gson;
@@ -21,6 +24,14 @@ module de.nocoffeetech.webservices.core {
     requires transitive com.google.gson;
     requires com.aayushatharva.brotli4j;
 
+    // terminal stuff
+    requires brigadier;
+    requires org.jline.reader;
+    requires net.minecrell.terminalconsole;
+    requires org.jline.terminal;
+
     uses ServiceProvider;
+    uses CommandProvider;
     provides ServiceProvider with BuiltinServiceProvider;
+    provides CommandProvider with BuiltinCommandProvider;
 }

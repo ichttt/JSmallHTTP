@@ -13,6 +13,7 @@ import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
+import de.nocoffeetech.webservices.core.terminal.TerminalHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -79,6 +80,8 @@ public class Loader {
             thread.setDaemon(true);
             thread.start();
         }
+
+        TerminalHandler.setup();
     }
 
     private static void periodicDevTasks() {
