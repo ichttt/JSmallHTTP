@@ -144,7 +144,14 @@ public class FileServerModule {
                 return headerWriter.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "").sendWithoutBody();
             } else {
                 FixedResponseBodyWriter bodyWriter = headerWriter.beginBodyWithKnownSize(size);
-                channel.transferTo(0, size, bodyWriter.getRawSocketChannel());
+                long transferred = 0;
+                long leftToTransfer = size;
+                do {
+                    long currentChunkTransferred = channel.transferTo(transferred, leftToTransfer, bodyWriter.getRawSocketChannel());
+                    leftToTransfer -= currentChunkTransferred;
+                    transferred += currentChunkTransferred;
+                    LOGGER.info("Transferred: " + transferred + ", wanted: " + leftToTransfer);
+                } while (leftToTransfer > 0);
                 return bodyWriter.finalizeResponse();
             }
         } catch (IOException e) {
