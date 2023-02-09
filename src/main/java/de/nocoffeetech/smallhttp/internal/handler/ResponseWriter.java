@@ -240,6 +240,8 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
             // End with a last CR LF to signal start of body
             stream.write('\r');
             stream.write('\n');
+
+            stream.flush();
         } catch (IOException e) {
             throw new HTTPWriteException(e);
         }
