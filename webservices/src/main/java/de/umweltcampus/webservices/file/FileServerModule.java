@@ -150,7 +150,6 @@ public class FileServerModule {
                     long currentChunkTransferred = channel.transferTo(transferred, leftToTransfer, bodyWriter.getRawSocketChannel());
                     leftToTransfer -= currentChunkTransferred;
                     transferred += currentChunkTransferred;
-                    LOGGER.info("Transferred: " + transferred + ", wanted: " + leftToTransfer);
                 } while (leftToTransfer > 0);
                 return bodyWriter.finalizeResponse();
             }
