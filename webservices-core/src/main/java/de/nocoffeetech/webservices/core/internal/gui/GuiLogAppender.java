@@ -24,6 +24,10 @@ public class GuiLogAppender extends AbstractAppender {
         messageQueue.clear();
     }
 
+    static boolean isActive() {
+        return active;
+    }
+
     static LogMessageContext awaitNext() throws InterruptedException {
         return messageQueue.take();
     }

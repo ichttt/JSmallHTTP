@@ -19,12 +19,6 @@ import java.util.concurrent.Executors;
 
 public class TerminalHandler implements Runnable {
     private static final Logger LOGGER = LogManager.getLogger(TerminalHandler.class);
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
-        Thread thread = new Thread(r);
-        thread.setName("CommandExecutor Thread");
-        thread.setDaemon(true);
-        return thread;
-    });
     private final Terminal terminal;
     private final String appName;
 
@@ -73,20 +67,7 @@ public class TerminalHandler implements Runnable {
                 if (line == null)
                     break;
 
-                line = line.trim();
-                if (!line.isEmpty()) {
-                    StringReader stringreader = new StringReader(line);
-                    if (stringreader.canRead() && stringreader.peek() == '/') {
-                        stringreader.skip();
-                    }
-                    EXECUTOR.submit(() -> {
-                        try {
-                            CommandHandler.DISPATCHER.execute(stringreader, null);
-                        } catch (CommandSyntaxException e) {
-                            LOGGER.error(e.getMessage());
-                        }
-                    });
-                }
+                CommandHandler.executeCommand(line);
             }
         } catch (UserInterruptException e) {
             for (ServiceHolder<?> serviceHolder : ServiceHolderLookup.getAll()) {

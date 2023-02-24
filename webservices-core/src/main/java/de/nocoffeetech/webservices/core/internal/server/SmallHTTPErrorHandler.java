@@ -14,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.channels.AsynchronousCloseException;
 import java.util.concurrent.RejectedExecutionException;
 
 public class SmallHTTPErrorHandler implements ErrorHandler {
@@ -26,6 +27,10 @@ public class SmallHTTPErrorHandler implements ErrorHandler {
 
     @Override
     public void onListenerInternalException(HTTPServer server, Throwable exception) {
+        if (exception instanceof AsynchronousCloseException && server.isShutdown()) {
+            LOGGER.debug("Service {} has been shut down", instanceName);
+            return;
+        }
         LOGGER.fatal("Internal error in server of service {} - Shutting down that service!", instanceName, exception);
         try {
             server.shutdown(false);
