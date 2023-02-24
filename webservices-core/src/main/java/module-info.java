@@ -30,6 +30,11 @@ module de.nocoffeetech.webservices.core {
     requires net.minecrell.terminalconsole;
     requires org.jline.terminal;
 
+    // GUI stuff
+    requires static java.desktop;
+    requires org.apache.logging.log4j.core;
+    exports de.nocoffeetech.webservices.core.internal.gui to org.apache.logging.log4j.core;
+
     uses ServiceProvider;
     uses CommandProvider;
     provides ServiceProvider with BuiltinServiceProvider;

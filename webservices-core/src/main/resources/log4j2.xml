@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="warn">
+<Configuration status="warn" packages="de.nocoffeetech.webservices.core.internal.gui">
     <Appenders>
         <TerminalConsole name="Console">
-            <PatternLayout pattern="%highlight{[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n}"/>
+            <PatternLayout pattern="%highlight{[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg%n}"/>
         </TerminalConsole>
+        <GuiLog name="ServerGuiConsole">
+            <PatternLayout pattern="[%d{HH:mm:ss}] [%t/%level] [%logger]: %msg%n"/>
+        </GuiLog>
         <RollingRandomAccessFile name="LogFile" fileName="logs/info.log" filePattern="logs/info-%i.log.gz">
-            <PatternLayout pattern="[%d{dd.MM.yy HH:mm:ss}] [%t/%level] [%logger]: %msg{nolookups}%n"/>
+            <PatternLayout pattern="[%d{dd.MM.yy HH:mm:ss}] [%t/%level] [%logger]: %msg%n"/>
             <Policies>
                 <OnStartupTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="200MB"/>
@@ -16,6 +19,7 @@
     <Loggers>
         <Root level="debug">
             <AppenderRef ref="Console" level="debug"/>
+            <AppenderRef ref="ServerGuiConsole" level="debug"/>
             <AppenderRef ref="LogFile" level="info"/>
         </Root>
     </Loggers>

@@ -9,6 +9,7 @@ import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConf
 import de.nocoffeetech.webservices.core.file.FileHolder;
 import de.nocoffeetech.webservices.core.internal.WebserviceLookup;
 import de.nocoffeetech.webservices.core.internal.config.Configuration;
+import de.nocoffeetech.webservices.core.internal.gui.GuiLoader;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
@@ -50,6 +51,8 @@ public class Loader {
         if (DEV_MODE) {
             System.setProperty("smallhttp.trackResponses", "true");
         }
+
+        GuiLoader.loadIfApplicable();
 
         WebserviceLookup webservices = new WebserviceLookup();
 
