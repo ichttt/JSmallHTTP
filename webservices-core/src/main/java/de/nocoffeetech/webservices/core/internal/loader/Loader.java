@@ -1,5 +1,9 @@
 package de.nocoffeetech.webservices.core.internal.loader;
 
+import de.nocoffeetech.webservices.core.builtin.BuiltinGlobalConfigProvider;
+import de.nocoffeetech.webservices.core.builtin.config.BuiltinGlobalConfig;
+import de.nocoffeetech.webservices.core.config.global.GlobalConfig;
+import de.nocoffeetech.webservices.core.config.global.GlobalConfigProvider;
 import de.nocoffeetech.webservices.core.config.server.RealServerConfig;
 import de.nocoffeetech.webservices.core.config.server.RootConfig;
 import de.nocoffeetech.webservices.core.config.server.ServerConfig;
@@ -13,6 +17,7 @@ import de.nocoffeetech.webservices.core.internal.config.Configuration;
 import de.nocoffeetech.webservices.core.internal.gui.GuiLoader;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
+import de.nocoffeetech.webservices.core.service.holder.GlobalConfigLookup;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 import de.nocoffeetech.webservices.core.terminal.TerminalHandler;
@@ -53,11 +58,20 @@ public class Loader {
             System.setProperty("smallhttp.trackResponses", "true");
         }
 
-        GuiLoader.loadIfApplicable();
+        WebserviceServiceLoader webservices = new WebserviceServiceLoader();
+        GlobalConfigServiceLoader globalConfigs = new GlobalConfigServiceLoader();
+        Configuration configuration = loadConfig(webservices, globalConfigs);
 
-        loadGlobalConfig();
+        setGlobalConfigs(globalConfigs, configuration);
 
-        startupServices();
+        BuiltinGlobalConfig builtinGlobalConfig = GlobalConfigLookup.getByConfigClass(BuiltinGlobalConfigProvider.class);
+        if (!builtinGlobalConfig.disableGui) {
+            GuiLoader.loadIfApplicable();
+        } else {
+            LOGGER.info("GUI is disabled in config");
+        }
+
+        startupServices(webservices, configuration);
 
         if (DEV_MODE) {
             Thread thread = new Thread(Loader::periodicDevTasks);
@@ -70,22 +84,32 @@ public class Loader {
         TerminalHandler.setup();
     }
 
-    private static void loadGlobalConfig() {
-        GlobalConfigServiceLoader globalConfigs = new GlobalConfigServiceLoader();
-
-    }
-
-    private static void startupServices() {
-        WebserviceServiceLoader webservices = new WebserviceServiceLoader();
-        GlobalConfigServiceLoader globalConfigs = new GlobalConfigServiceLoader();
-
-        Configuration configuration;
+    private static Configuration loadConfig(WebserviceServiceLoader webservices, GlobalConfigServiceLoader globalConfigs) {
         try {
-            configuration = new Configuration(webservices, globalConfigs);
+            return new Configuration(webservices, globalConfigs);
         } catch (Exception e) {
             throw new RuntimeException("Failed to read config!", e);
         }
+    }
 
+    private static void setGlobalConfigs(GlobalConfigServiceLoader globalConfigs, Configuration baseConfig) {
+        Map<GlobalConfigProvider<?>, GlobalConfig> configProviderMap = new HashMap<>();
+        for (Map.Entry<String, GlobalConfig> entry : baseConfig.getRootConfig().globalConfigs.entrySet()) {
+            String key = entry.getKey();
+            GlobalConfig config = entry.getValue();
+            try {
+                config.validateConfig();
+            } catch (InvalidConfigValueException e) {
+                throw new RuntimeException("Config validation of global config " + key + " failed!", e);
+            }
+            GlobalConfigProvider<?> provider = globalConfigs.getForName(key);
+            GlobalConfigServiceLoader.setConfig(provider, config);
+            configProviderMap.put(provider, config);
+        }
+        GlobalConfigLookup.setCurrentConfigs(configProviderMap);
+    }
+
+    private static void startupServices(WebserviceServiceLoader webservices, Configuration configuration) {
         RootConfig rootConfig = configuration.getRootConfig();
         Map<BaseServiceConfig, WebserviceDefinition<?>> config2Definition = collectConfigs(rootConfig, webservices);
 

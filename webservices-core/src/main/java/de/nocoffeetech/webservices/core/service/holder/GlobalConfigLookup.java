@@ -4,7 +4,6 @@ import de.nocoffeetech.webservices.core.config.global.GlobalConfig;
 import de.nocoffeetech.webservices.core.config.global.GlobalConfigProvider;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 public class GlobalConfigLookup {
@@ -15,10 +14,17 @@ public class GlobalConfigLookup {
         GlobalConfigLookup.currentConfigs = Collections.unmodifiableMap(currentConfigs);
     }
 
-    public static <T extends GlobalConfig> T getByConfigClass(GlobalConfigProvider<T> provider) {
-        GlobalConfig globalConfig = currentConfigs.get(provider);
-        if (globalConfig == null) throw new IllegalArgumentException("Config provider class + " + provider.getConfigClass() + " is not provided to service loader!");
-        return provider.getConfigClass().cast(globalConfig);
+    public static <T extends GlobalConfig> T getByConfigClass(Class<? extends GlobalConfigProvider<T>> providerClass) {
+        for (Map.Entry<GlobalConfigProvider<?>, GlobalConfig> entry : currentConfigs.entrySet()) {
+            GlobalConfigProvider<?> provider = entry.getKey();
+            GlobalConfig globalConfig = entry.getValue();
+            if (provider.getClass() == providerClass) {
+                GlobalConfigProvider<T> castedProvider = (providerClass.cast(provider));
+                return castedProvider.getConfigClass().cast(globalConfig);
+            }
+        }
+        throw new IllegalArgumentException("Config provider class + " + providerClass.getName() + " is not provided to service loader!");
+
     }
 
     public static GlobalConfig getByConfigName(String name) {

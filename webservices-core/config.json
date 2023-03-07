@@ -1,7 +1,7 @@
 {
   "globalConfigs": {
     "builtin": {
-      "enableGui": true
+      "disableGui": false
     }
   },
   "servers":

@@ -10,8 +10,6 @@ import java.util.regex.Pattern;
 
 public class WebserviceServiceLoader extends BaseServiceLoader<WebserviceProvider> {
     private static final Logger LOGGER = LogManager.getLogger(WebserviceServiceLoader.class);
-    private static final Pattern NAME_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9_]*$");
-    private final Map<String, WebserviceProvider> serviceProviders = new TreeMap<>(String::compareTo);
 
     public WebserviceServiceLoader() {
         super(WebserviceProvider.class);
