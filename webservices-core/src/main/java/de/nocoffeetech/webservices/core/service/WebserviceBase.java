@@ -16,7 +16,7 @@ import org.apache.logging.log4j.Logger;
 import java.util.Objects;
 
 /**
- * This class is the basis for every webservices defined in a {@link ServiceProvider}.
+ * This class is the basis for every webservices defined in a {@link WebserviceProvider}.
  * It is responsible for delegating the request to the responsible handler.
  */
 public abstract class WebserviceBase implements RequestHandler {

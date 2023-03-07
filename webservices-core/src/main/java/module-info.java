@@ -1,11 +1,14 @@
-import de.nocoffeetech.webservices.core.builtin.BuiltinServiceProvider;
-import de.nocoffeetech.webservices.core.service.ServiceProvider;
-import de.nocoffeetech.webservices.core.terminal.BuiltinCommandProvider;
+import de.nocoffeetech.webservices.core.builtin.BuiltinGlobalConfigProvider;
+import de.nocoffeetech.webservices.core.builtin.BuiltinWebserviceProvider;
+import de.nocoffeetech.webservices.core.config.global.GlobalConfigProvider;
+import de.nocoffeetech.webservices.core.service.WebserviceProvider;
+import de.nocoffeetech.webservices.core.builtin.BuiltinCommandProvider;
 import de.nocoffeetech.webservices.core.terminal.api.CommandProvider;
 
 module de.nocoffeetech.webservices.core {
     exports de.nocoffeetech.webservices.core.builtin;
     exports de.nocoffeetech.webservices.core.builtin.config;
+    exports de.nocoffeetech.webservices.core.config.global;
     exports de.nocoffeetech.webservices.core.config.service;
     exports de.nocoffeetech.webservices.core.endpoint;
     exports de.nocoffeetech.webservices.core.file;
@@ -35,8 +38,10 @@ module de.nocoffeetech.webservices.core {
     requires org.apache.logging.log4j.core;
     exports de.nocoffeetech.webservices.core.internal.gui to org.apache.logging.log4j.core;
 
-    uses ServiceProvider;
+    uses WebserviceProvider;
     uses CommandProvider;
-    provides ServiceProvider with BuiltinServiceProvider;
+    uses GlobalConfigProvider;
+    provides WebserviceProvider with BuiltinWebserviceProvider;
     provides CommandProvider with BuiltinCommandProvider;
+    provides GlobalConfigProvider with BuiltinGlobalConfigProvider;
 }

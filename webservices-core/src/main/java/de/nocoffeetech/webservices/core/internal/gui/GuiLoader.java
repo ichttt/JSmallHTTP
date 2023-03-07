@@ -6,7 +6,6 @@ import org.apache.logging.log4j.Logger;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Method;
 
 public class GuiLoader {
     private static final Logger LOGGER = LogManager.getLogger(GuiLoader.class);

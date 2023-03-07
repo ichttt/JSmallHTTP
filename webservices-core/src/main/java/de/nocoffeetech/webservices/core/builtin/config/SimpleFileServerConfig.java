@@ -1,6 +1,5 @@
 package de.nocoffeetech.webservices.core.builtin.config;
 
-import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
 import de.nocoffeetech.webservices.core.config.service.MultiInstanceServiceConfig;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.RedirectInfo;

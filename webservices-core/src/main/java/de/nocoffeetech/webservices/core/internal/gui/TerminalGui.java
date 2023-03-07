@@ -41,10 +41,9 @@ public class TerminalGui {
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                JDialog window = null;
-                try {
-                    window = (JDialog) e.getSource();
-                } catch (ClassCastException ignored) {
+                Component window = null;
+                if (e.getSource() instanceof Component component){
+                    window = component;
                 }
                 if (JOptionPane.showConfirmDialog(window, "Are you sure you want to shut down the server?", "Confirm Shutdown", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                     GuiLogAppender.deactivate();

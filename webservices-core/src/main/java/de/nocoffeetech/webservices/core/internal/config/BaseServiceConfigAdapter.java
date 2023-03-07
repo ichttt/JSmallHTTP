@@ -7,14 +7,14 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
-import de.nocoffeetech.webservices.core.internal.WebserviceLookup;
+import de.nocoffeetech.webservices.core.internal.service.loader.WebserviceServiceLoader;
 
 import java.lang.reflect.Type;
 
 public class BaseServiceConfigAdapter implements JsonDeserializer<BaseServiceConfig> {
-    private final WebserviceLookup lookup;
+    private final WebserviceServiceLoader lookup;
 
-    public BaseServiceConfigAdapter(WebserviceLookup lookup) {
+    public BaseServiceConfigAdapter(WebserviceServiceLoader lookup) {
         this.lookup = lookup;
     }
 

@@ -1,21 +1,19 @@
 package de.nocoffeetech.webservices.core.service;
 
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
-import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConfig;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
 /**
- * Holds the central information and configuration of a webservice that is provided by the {@link ServiceProvider}.
+ * Holds the central information and configuration of a webservice that is provided by the {@link WebserviceProvider}.
  */
 public final class WebserviceDefinition <T extends BaseServiceConfig> {
     private final String name;
     private final Class<T> configClass;
     private final BiFunction<T, String, WebserviceBase> webserviceCreator;
-    private List<ContinuousBackgroundTask> backgroundTasks;
+    private final List<ContinuousBackgroundTask> backgroundTasks;
 
     /**
      * Defines the name and configuration webservice

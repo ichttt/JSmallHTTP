@@ -8,13 +8,14 @@ import java.util.Map;
  * The root class that defines a webservice provider to the webservice system.
  * An implementation of this should be as a service provider in the module-info using the "provides" keyword so the loader can find it at runtime.
  */
-public interface ServiceProvider {
+public interface WebserviceProvider {
 
     /**
      * Called once after discovery of all service providers has been completed and the config of services has been evaluated
      * @param allProviders A set service providers (including this) that have been found
+     * @param foundServices The service definitions that have been found
      */
-    default void initialize(Map<String, ServiceProvider> allProviders, Collection<WebserviceDefinition<?>> servicesToStart) {}
+    default void initialize(Map<String, WebserviceProvider> allProviders, Collection<WebserviceDefinition<?>> foundServices) {}
 
     /**
      * Gets a static list of services this provider supports.

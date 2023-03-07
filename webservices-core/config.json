@@ -1,4 +1,9 @@
 {
+  "globalConfigs": {
+    "builtin": {
+      "enableGui": true
+    }
+  },
   "servers":
   [
     {

@@ -7,7 +7,8 @@ import de.nocoffeetech.webservices.core.config.server.VirtualServerConfig;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
 import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConfig;
 import de.nocoffeetech.webservices.core.file.FileHolder;
-import de.nocoffeetech.webservices.core.internal.WebserviceLookup;
+import de.nocoffeetech.webservices.core.internal.service.loader.GlobalConfigServiceLoader;
+import de.nocoffeetech.webservices.core.internal.service.loader.WebserviceServiceLoader;
 import de.nocoffeetech.webservices.core.internal.config.Configuration;
 import de.nocoffeetech.webservices.core.internal.gui.GuiLoader;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
@@ -54,27 +55,9 @@ public class Loader {
 
         GuiLoader.loadIfApplicable();
 
-        WebserviceLookup webservices = new WebserviceLookup();
+        loadGlobalConfig();
 
-        Configuration configuration;
-        try {
-            configuration = new Configuration(webservices);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read config!", e);
-        }
-
-        RootConfig rootConfig = configuration.getRootConfig();
-        Map<BaseServiceConfig, WebserviceDefinition<?>> config2Definition = collectConfigs(rootConfig, webservices);
-
-        webservices.initServices(config2Definition.values());
-
-        List<ServiceHolder<?>> services;
-        try {
-            services = createServices(rootConfig, config2Definition);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create service holders!", e);
-        }
-        ServiceHolderLookup.setServices(services);
+        startupServices();
 
         if (DEV_MODE) {
             Thread thread = new Thread(Loader::periodicDevTasks);
@@ -85,6 +68,37 @@ public class Loader {
         }
 
         TerminalHandler.setup();
+    }
+
+    private static void loadGlobalConfig() {
+        GlobalConfigServiceLoader globalConfigs = new GlobalConfigServiceLoader();
+
+    }
+
+    private static void startupServices() {
+        WebserviceServiceLoader webservices = new WebserviceServiceLoader();
+        GlobalConfigServiceLoader globalConfigs = new GlobalConfigServiceLoader();
+
+        Configuration configuration;
+        try {
+            configuration = new Configuration(webservices, globalConfigs);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read config!", e);
+        }
+
+        RootConfig rootConfig = configuration.getRootConfig();
+        Map<BaseServiceConfig, WebserviceDefinition<?>> config2Definition = collectConfigs(rootConfig, webservices);
+
+        webservices.initServices(config2Definition.values());
+        LOGGER.debug("Services initialized");
+
+        List<ServiceHolder<?>> services;
+        try {
+            services = createServices(rootConfig, config2Definition);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create service holders!", e);
+        }
+        ServiceHolderLookup.setServices(services);
     }
 
     private static void periodicDevTasks() {
@@ -98,7 +112,7 @@ public class Loader {
         }
     }
 
-    private static Map<BaseServiceConfig, WebserviceDefinition<?>> collectConfigs(RootConfig rootConfig, WebserviceLookup lookup) {
+    private static Map<BaseServiceConfig, WebserviceDefinition<?>> collectConfigs(RootConfig rootConfig, WebserviceServiceLoader lookup) {
         Map<BaseServiceConfig, WebserviceDefinition<?>> allConfigs = new HashMap<>();
         Set<String> instanceNames = new HashSet<>();
 

@@ -1,4 +1,4 @@
-package de.nocoffeetech.webservices.core.terminal;
+package de.nocoffeetech.webservices.core.builtin;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;

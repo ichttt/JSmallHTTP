@@ -1,7 +1,5 @@
 package de.nocoffeetech.webservices.core.terminal;
 
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 import net.minecrell.terminalconsole.TerminalConsoleAppender;
@@ -14,8 +12,6 @@ import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class TerminalHandler implements Runnable {
     private static final Logger LOGGER = LogManager.getLogger(TerminalHandler.class);
