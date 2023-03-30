@@ -23,17 +23,30 @@ public class BuiltinCommandProvider implements CommandProvider {
 
     @Override
     public void registerCommand(CommandDispatcher<Void> dispatcher) {
+        registerQuit(dispatcher);
         registerHelp(dispatcher);
         registerStart(dispatcher);
         registerStop(dispatcher);
         registerStatus(dispatcher);
     }
 
+    public static void registerQuit(CommandDispatcher<Void> dispatcher) {
+        dispatcher.register(CommandProvider.literal("quit")
+                .executes(context -> {
+                    for (ServiceHolder<?> server : ServiceHolderLookup.getAll()) {
+                        server.shutdownIfPossible();
+                    }
+                    LOGGER.info("Quitting application");
+                    System.exit(0);
+                    throw new RuntimeException("Should not reach here!");
+                }));
+    }
+
 
     public static void registerStop(CommandDispatcher<Void> dispatcher) {
-        dispatcher.register(CommandProvider.literal("stop")
-                .then(CommandProvider.argument("server", ServiceArgumentType.running()).executes(context -> {
-                    ServiceHolder<?> service = ServiceArgumentType.getServer(context, "server");
+        dispatcher.register(CommandProvider.literal("stopService")
+                .then(CommandProvider.argument("service", ServiceArgumentType.running()).executes(context -> {
+                    ServiceHolder<?> service = ServiceArgumentType.getServer(context, "service");
                     try {
                         service.shutdown();
                     } catch (IllegalStateException e) {
@@ -51,9 +64,9 @@ public class BuiltinCommandProvider implements CommandProvider {
     }
 
     public static void registerStart(CommandDispatcher<Void> dispatcher) {
-        dispatcher.register(CommandProvider.literal("start")
-                .then(CommandProvider.argument("server", ServiceArgumentType.stopped()).executes(context -> {
-                    ServiceHolder<?> service = ServiceArgumentType.getServer(context, "server");
+        dispatcher.register(CommandProvider.literal("startService")
+                .then(CommandProvider.argument("service", ServiceArgumentType.stopped()).executes(context -> {
+                    ServiceHolder<?> service = ServiceArgumentType.getServer(context, "service");
                     try {
                         service.startup();
                     } catch (IllegalStateException e) {

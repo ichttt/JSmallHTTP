@@ -26,7 +26,7 @@ public class TerminalHandler implements Runnable {
         } else {
             LOGGER.debug("Starting terminal handler");
             Thread terminalHandler = new Thread(new TerminalHandler(terminal, "Terminal"));
-            terminalHandler.setDaemon(true);
+            terminalHandler.setDaemon(false);
             terminalHandler.setName("TerminalHandler Thread");
             terminalHandler.start();
         }
