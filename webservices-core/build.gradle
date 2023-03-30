@@ -70,7 +70,7 @@ test {
     useJUnitPlatform()
 }
 
-task copyDeps(type: Copy) {
+tasks.register('copyDeps', Copy) {
     from(sourceSets.main.runtimeClasspath)
     include('*.jar')
     includeEmptyDirs = false
@@ -79,7 +79,7 @@ task copyDeps(type: Copy) {
 
 jar.dependsOn(copyDeps)
 
-task launcherJar(type: Jar) {
+tasks.register('launcherJar', Jar) {
     from(sourceSets.launcher.output)
     archiveFileName = 'webservices-launcher.jar'
     manifest {
@@ -87,7 +87,7 @@ task launcherJar(type: Jar) {
     }
 }
 
-task run(type: JavaExec) {
+tasks.register('run', JavaExec) {
     classpath = sourceSets.launcher.runtimeClasspath
     mainClass = javaMainClass
     jvmArgs = ["-Dwebservices.dev=true", "-Dwebservices.launcher.additional_modules=" + sourceSets.main.runtimeClasspath.toList().stream().map(Object::toString).collect(Collectors.joining(File.pathSeparator))]
@@ -95,11 +95,11 @@ task run(type: JavaExec) {
 
 build.dependsOn(launcherJar)
 
-task sourceJar(type: Jar) {
+tasks.register('sourceJar', Jar) {
     from sourceSets.main.allJava
 }
 
-task launcherSourceJar(type: Jar) {
+tasks.register('launcherSourceJar', Jar) {
     from sourceSets.launcher.allJava
 }
 
@@ -123,4 +123,6 @@ publishing {
         }
     }
 }
+publishLauncherPublicationToMavenLocal.dependsOn(sourceJar)
+publishServicesPublicationToMavenLocal.dependsOn(launcherSourceJar)
 

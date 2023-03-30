@@ -33,8 +33,7 @@ public class RunningTask {
             LOGGER.warn("Shutdown thread interrupted while waiting for thread!");
         }
         if (thread.isAlive()) {
-            LOGGER.warn("Task {} of service {} did not terminate in time! Forcing termination...", name(), serviceName);
-            thread.stop();
+            LOGGER.warn("Task {} of service {} did not terminate in time!", name(), serviceName);
         }
     }
 

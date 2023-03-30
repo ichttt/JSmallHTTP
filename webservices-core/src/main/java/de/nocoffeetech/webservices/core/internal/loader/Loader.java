@@ -120,6 +120,7 @@ public class Loader {
             GlobalConfigServiceLoader.setConfig(provider, config);
             configProviderMap.put(provider, config);
         }
+        // Check if any config has not been removed from the map. If that is the case then the config is missing entries
         if (!globalConfigsByName.isEmpty()) {
             LOGGER.error("{} global config entries could not be found!", globalConfigsByName.size());
             for (String name : globalConfigsByName.keySet()) {
