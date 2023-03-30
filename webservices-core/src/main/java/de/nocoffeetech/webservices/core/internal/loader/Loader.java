@@ -85,14 +85,26 @@ public class Loader {
     }
 
     private static Configuration loadConfig(WebserviceServiceLoader webservices, GlobalConfigServiceLoader globalConfigs) {
+        Configuration configuration;
         try {
-            return new Configuration(webservices, globalConfigs);
+            configuration = new Configuration(webservices, globalConfigs);
         } catch (Exception e) {
             throw new RuntimeException("Failed to read config!", e);
         }
+
+        RootConfig rootConfig = configuration.getRootConfig();
+        if (rootConfig.servers == null) {
+            throw new RuntimeException("Missing \"servers\" section in config!");
+        }
+        if (rootConfig.globalConfigs == null) {
+            throw new RuntimeException("Missing \"globalConfigs\" section in config!");
+        }
+
+        return configuration;
     }
 
     private static void setGlobalConfigs(GlobalConfigServiceLoader globalConfigs, Configuration baseConfig) {
+        Map<String, GlobalConfigProvider<?>> globalConfigsByName = globalConfigs.getAll();
         Map<GlobalConfigProvider<?>, GlobalConfig> configProviderMap = new HashMap<>();
         for (Map.Entry<String, GlobalConfig> entry : baseConfig.getRootConfig().globalConfigs.entrySet()) {
             String key = entry.getKey();
@@ -102,9 +114,18 @@ public class Loader {
             } catch (InvalidConfigValueException e) {
                 throw new RuntimeException("Config validation of global config " + key + " failed!", e);
             }
-            GlobalConfigProvider<?> provider = globalConfigs.getForName(key);
+            GlobalConfigProvider<?> provider = globalConfigsByName.remove(key);
+            if (provider == null) throw new IllegalArgumentException("Could not find global config provider for name " + key);
+
             GlobalConfigServiceLoader.setConfig(provider, config);
             configProviderMap.put(provider, config);
+        }
+        if (!globalConfigsByName.isEmpty()) {
+            LOGGER.error("{} global config entries could not be found!", globalConfigsByName.size());
+            for (String name : globalConfigsByName.keySet()) {
+                LOGGER.error("\tNo entry for global config \"{}\"", name);
+            }
+            throw new RuntimeException("Found unresolved global configs");
         }
         GlobalConfigLookup.setCurrentConfigs(configProviderMap);
     }

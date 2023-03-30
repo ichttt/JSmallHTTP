@@ -3,6 +3,7 @@ package de.nocoffeetech.webservices.core.internal.service.loader;
 import de.nocoffeetech.webservices.core.config.global.GlobalConfig;
 import de.nocoffeetech.webservices.core.config.global.GlobalConfigProvider;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class GlobalConfigServiceLoader extends BaseServiceLoader<GlobalConfigProvider<?>> {
@@ -31,6 +32,10 @@ public class GlobalConfigServiceLoader extends BaseServiceLoader<GlobalConfigPro
             throw new IllegalArgumentException("Could not find global config provider for name " + name);
         }
         return globalConfigProvider;
+    }
+
+    public Map<String, GlobalConfigProvider<?>> getAll() {
+        return new HashMap<>(this.serviceProviders);
     }
 
     public static <T extends GlobalConfig> void setConfig(GlobalConfigProvider<T> provider, GlobalConfig config) {
