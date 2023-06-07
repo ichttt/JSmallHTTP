@@ -157,6 +157,8 @@ public class Loader {
     private static void periodicDevTasks() {
         while (true) {
             try {
+                // TODO maybe, in the far far future, implement a file watcher so we dont have to poll. Not important though as dev only
+                //noinspection BusyWait
                 Thread.sleep(10000);
             } catch (InterruptedException e) {
                 // huh
