@@ -23,4 +23,6 @@ public interface HTTPRequest {
     InputStream getInputStream();
 
     int getContentLength();
+
+    HTTPRequest copyWithNewPath(String newPath);
 }

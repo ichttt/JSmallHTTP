@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import de.nocoffeetech.webservices.core.service.holder.RealServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 
@@ -39,7 +40,7 @@ public class ServiceArgumentType implements ArgumentType<ServiceHolder<?>> {
     }
 
     public static ServiceHolder<?> getServer(final CommandContext<?> context, final String name) {
-        return context.getArgument(name, ServiceHolder.class);
+        return context.getArgument(name, RealServiceHolder.class);
     }
 
     private Stream<ServiceHolder<?>> createServiceStream() {

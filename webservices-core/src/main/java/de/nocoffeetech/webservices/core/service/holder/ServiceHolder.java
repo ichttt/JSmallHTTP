@@ -1,10 +1,7 @@
 package de.nocoffeetech.webservices.core.service.holder;
 
-import de.nocoffeetech.smallhttp.base.HTTPServer;
-import de.nocoffeetech.smallhttp.base.HTTPServerBuilder;
-import de.nocoffeetech.webservices.core.config.server.RealServerConfig;
+import de.nocoffeetech.webservices.core.config.server.ServerConfig;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
-import de.nocoffeetech.webservices.core.internal.server.SmallHTTPErrorHandler;
 import de.nocoffeetech.webservices.core.internal.service.RunningTask;
 import de.nocoffeetech.webservices.core.service.ContinuousBackgroundTask;
 import de.nocoffeetech.webservices.core.service.WebserviceBase;
@@ -17,27 +14,38 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-// TODO decouple from RealServerConfig once Virtual Servers become a thing
-public class ServiceHolder<T extends BaseServiceConfig> {
+public abstract class ServiceHolder<T extends BaseServiceConfig> {
     private static final Logger LOGGER = LogManager.getLogger(ServiceHolder.class);
     private static final int MAX_TERMINATION_TIME_MS = 10000;
-    private final WebserviceDefinition<?> serviceDefinition;
-    private final RealServerConfig realServerConfig;
-    private final T serviceConfig;
-    private final List<RunningTask> runningTasks = new ArrayList<>();
-    private WebserviceBase runningService;
-    private HTTPServer runningServer;
+    protected final WebserviceDefinition<T> serviceDefinition;
+    protected final ServerConfig serverConfig;
+    protected final T serviceConfig;
+    protected WebserviceBase runningService;
     private boolean inShutdownProcess = false;
+    private final List<RunningTask> runningTasks = new ArrayList<>();
 
-    public ServiceHolder(WebserviceDefinition<T> serviceDefinition, RealServerConfig realServerConfig, BaseServiceConfig serviceConfig) throws IOException {
+
+    public ServiceHolder(WebserviceDefinition<T> serviceDefinition, ServerConfig serverConfig, BaseServiceConfig serviceConfig) throws IOException {
         this.serviceDefinition = serviceDefinition;
-        this.realServerConfig = realServerConfig;
+        this.serverConfig = serverConfig;
         this.serviceConfig = serviceDefinition.getConfigClass().cast(serviceConfig);
         if (serviceConfig.autostart)
             startup();
     }
 
-    public void startup() throws IOException {
+    protected abstract void startupServerImpl(WebserviceBase webservice, String instanceName) throws IOException;
+
+    protected abstract void shutdownServerImpl();
+
+    protected abstract boolean isServerRunning();
+
+    public final boolean isRunning() {
+        synchronized (this) {
+            return runningService != null && isServerRunning();
+        }
+    }
+
+    public final void startup() throws IOException {
         synchronized (this) {
             if (isRunning()) throw new IllegalStateException("Already running!");
 
@@ -45,12 +53,8 @@ public class ServiceHolder<T extends BaseServiceConfig> {
             LOGGER.info("Starting up {}", instanceName);
 
             WebserviceBase webservice = serviceDefinition.createNew(serviceConfig, instanceName);
-            HTTPServer server = HTTPServerBuilder
-                    .create(realServerConfig.port, webservice)
-                    .setErrorHandler(new SmallHTTPErrorHandler(instanceName))
-                    .build();
+            startupServerImpl(webservice, instanceName);
             this.runningService = webservice;
-            this.runningServer = server;
 
             LOGGER.info("Started {}", runningService.getInstanceName());
 
@@ -66,33 +70,28 @@ public class ServiceHolder<T extends BaseServiceConfig> {
         }
     }
 
-    public void shutdown() {
+    public final void shutdown() {
         synchronized (this) {
             if (!isRunning()) throw new IllegalStateException("Server already shutdown!");
-            doShutdown();
+            initiateShutdown();
         }
     }
 
-    public void shutdownIfPossible() {
+    public final void shutdownIfPossible() {
         synchronized (this) {
             if (runningService != null) {
-                doShutdown();
+                initiateShutdown();
             }
         }
     }
 
-    private void doShutdown() {
+    private void initiateShutdown() {
         try {
             String instanceName = getInstanceName();
             LOGGER.info("Shutting down {}", instanceName);
             inShutdownProcess = true;
 
-            try {
-                runningServer.shutdown(true);
-            } catch (IOException e) {
-                LOGGER.error("Failed to shut down main server!");
-                return;
-            }
+            shutdownServerImpl();
 
             Iterator<RunningTask> iterator = runningTasks.iterator();
             while (iterator.hasNext()) {
@@ -112,29 +111,23 @@ public class ServiceHolder<T extends BaseServiceConfig> {
             }
             runningTasks.clear();
             runningService = null;
-            runningServer = null;
         } finally {
             inShutdownProcess = false;
         }
     }
 
-    public boolean isRunning() {
-        synchronized (this) {
-            return runningService != null && !runningServer.isShutdown();
-        }
-    }
-    public WebserviceBase getServiceIfRunning() {
+    public final WebserviceBase getServiceIfRunning() {
         synchronized (this) {
             if (isRunning()) return runningService;
             else return null;
         }
     }
 
-    public WebserviceDefinition<?> getServiceDefinition() {
+    public final WebserviceDefinition<?> getServiceDefinition() {
         return serviceDefinition;
     }
 
-    public String getInstanceName() {
+    public final String getInstanceName() {
         return serviceConfig.getInstanceName();
     }
 

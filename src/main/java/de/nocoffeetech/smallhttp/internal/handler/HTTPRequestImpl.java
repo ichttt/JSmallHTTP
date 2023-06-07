@@ -31,6 +31,15 @@ public class HTTPRequestImpl implements HTTPRequest {
         this.contentLength = 0;
     }
 
+    private HTTPRequestImpl(Method method, URLParser parser, String path, HTTPVersion version, Map<String, Object> headers) {
+        this.method = method;
+        this.urlParser = parser;
+        this.path = path;
+        this.version = version;
+        this.headers = headers;
+        this.contentLength = 0;
+    }
+
     void setRestBuffer(byte[] restBuffer, int bufOffset, int bufLength, InputStream originalInputStream, int contentLength) {
         this.contentLength = contentLength;
         this.restBufInputStream = new RestBufInputStream(restBuffer, bufOffset, bufLength, originalInputStream, contentLength);
@@ -117,6 +126,11 @@ public class HTTPRequestImpl implements HTTPRequest {
     @Override
     public int getContentLength() {
         return this.contentLength;
+    }
+
+    @Override
+    public HTTPRequest copyWithNewPath(String newPath) {
+        return new HTTPRequestImpl(this.method, this.urlParser, newPath, this.version, this.headers);
     }
 
     boolean isAsteriskRequest() {

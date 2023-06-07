@@ -11,13 +11,14 @@ import de.nocoffeetech.webservices.core.config.server.VirtualServerConfig;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
 import de.nocoffeetech.webservices.core.config.service.SingleInstanceServiceConfig;
 import de.nocoffeetech.webservices.core.file.FileHolder;
-import de.nocoffeetech.webservices.core.internal.service.loader.GlobalConfigServiceLoader;
-import de.nocoffeetech.webservices.core.internal.service.loader.WebserviceServiceLoader;
 import de.nocoffeetech.webservices.core.internal.config.Configuration;
 import de.nocoffeetech.webservices.core.internal.gui.GuiLoader;
+import de.nocoffeetech.webservices.core.internal.service.loader.GlobalConfigServiceLoader;
+import de.nocoffeetech.webservices.core.internal.service.loader.WebserviceServiceLoader;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
 import de.nocoffeetech.webservices.core.service.holder.GlobalConfigLookup;
+import de.nocoffeetech.webservices.core.service.holder.RealServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
 import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 import de.nocoffeetech.webservices.core.terminal.TerminalHandler;
@@ -25,7 +26,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class Loader {
     public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
@@ -196,9 +203,12 @@ public class Loader {
             if (serverConfig instanceof RealServerConfig realServerConfig) {
                 BaseServiceConfig serviceConfig = realServerConfig.service;
                 WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(serviceConfig));
-                serviceHolders.add(new ServiceHolder<>(definition, realServerConfig, serviceConfig));
+                serviceHolders.add(new RealServiceHolder<>(definition, realServerConfig, serviceConfig));
             } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
-                throw new RuntimeException("Virtual server config not yet implemented!");
+                List<BaseServiceConfig> serviceConfigs = virtualServerConfig.gatherServices();
+                for (BaseServiceConfig serviceConfig : serviceConfigs) {
+                    WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(serviceConfig));
+                }
             } else {
                 throw new RuntimeException("Invalid configuration of type " + serverConfig.getClass());
             }
