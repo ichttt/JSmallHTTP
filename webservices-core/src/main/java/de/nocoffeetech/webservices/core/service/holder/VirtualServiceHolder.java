@@ -1,6 +1,5 @@
 package de.nocoffeetech.webservices.core.service.holder;
 
-import de.nocoffeetech.smallhttp.base.HTTPServer;
 import de.nocoffeetech.webservices.core.config.server.VirtualServerConfig;
 import de.nocoffeetech.webservices.core.config.service.BaseServiceConfig;
 import de.nocoffeetech.webservices.core.service.VirtualServerManager;
@@ -13,14 +12,11 @@ import java.io.IOException;
 
 public class VirtualServiceHolder<T extends BaseServiceConfig> extends ServiceHolder<T> {
     private static final Logger LOGGER = LogManager.getLogger(RealServiceHolder.class);
-    private final VirtualServerConfig virtualServerConfig;
     private final String prefix;
     private final VirtualServerManager virtualServer;
-    private HTTPServer runningServer;
 
     public VirtualServiceHolder(WebserviceDefinition<T> serviceDefinition, VirtualServerConfig virtualServerConfig, BaseServiceConfig serviceConfig, String prefix, VirtualServerManager virtualServer) {
         super(serviceDefinition, virtualServerConfig, serviceConfig);
-        this.virtualServerConfig = virtualServerConfig;
         this.prefix = prefix;
         this.virtualServer = virtualServer;
     }

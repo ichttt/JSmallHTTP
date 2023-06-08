@@ -1,9 +1,5 @@
 package de.nocoffeetech.webservices.core.file;
 
-import de.nocoffeetech.webservices.core.file.compress.CompressionStrategy;
-import de.nocoffeetech.webservices.core.file.compress.FileCompressor;
-import de.nocoffeetech.webservices.core.internal.util.TempDirHelper;
-import de.nocoffeetech.webservices.core.service.WebserviceBase;
 import de.nocoffeetech.smallhttp.base.HTTPRequest;
 import de.nocoffeetech.smallhttp.data.Method;
 import de.nocoffeetech.smallhttp.data.Status;
@@ -11,12 +7,12 @@ import de.nocoffeetech.smallhttp.header.BuiltinHeaders;
 import de.nocoffeetech.smallhttp.header.CommonContentTypes;
 import de.nocoffeetech.smallhttp.header.PrecomputedHeader;
 import de.nocoffeetech.smallhttp.header.PrecomputedHeaderKey;
-import de.nocoffeetech.smallhttp.response.FixedResponseBodyWriter;
-import de.nocoffeetech.smallhttp.response.HTTPWriteException;
-import de.nocoffeetech.smallhttp.response.ResponseHeaderWriter;
-import de.nocoffeetech.smallhttp.response.ResponseStartWriter;
-import de.nocoffeetech.smallhttp.response.ResponseToken;
+import de.nocoffeetech.smallhttp.response.*;
 import de.nocoffeetech.smallhttp.util.ResponseDateFormatter;
+import de.nocoffeetech.webservices.core.file.compress.CompressionStrategy;
+import de.nocoffeetech.webservices.core.file.compress.FileCompressor;
+import de.nocoffeetech.webservices.core.internal.util.TempDirHelper;
+import de.nocoffeetech.webservices.core.service.WebserviceBase;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -141,7 +137,7 @@ public class FileServerModule {
             long size = channel.size();
 
             if (requestMethod == Method.HEAD) {
-                return headerWriter.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "").sendWithoutBody();
+                return headerWriter.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, String.valueOf(size)).sendWithoutBody();
             } else {
                 FixedResponseBodyWriter bodyWriter = headerWriter.beginBodyWithKnownSize(size);
                 long transferred = 0;

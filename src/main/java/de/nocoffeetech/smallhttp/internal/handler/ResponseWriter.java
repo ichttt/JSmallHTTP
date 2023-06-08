@@ -6,12 +6,7 @@ import de.nocoffeetech.smallhttp.header.BuiltinHeaders;
 import de.nocoffeetech.smallhttp.header.CommonContentTypes;
 import de.nocoffeetech.smallhttp.header.PrecomputedHeader;
 import de.nocoffeetech.smallhttp.header.PrecomputedHeaderKey;
-import de.nocoffeetech.smallhttp.response.ChunkedResponseWriter;
-import de.nocoffeetech.smallhttp.response.FixedResponseBodyWriter;
-import de.nocoffeetech.smallhttp.response.HTTPWriteException;
-import de.nocoffeetech.smallhttp.response.ResponseHeaderWriter;
-import de.nocoffeetech.smallhttp.response.ResponseStartWriter;
-import de.nocoffeetech.smallhttp.response.ResponseToken;
+import de.nocoffeetech.smallhttp.response.*;
 import de.nocoffeetech.smallhttp.util.ResponseDateFormatter;
 
 import java.io.IOException;
@@ -118,7 +113,7 @@ public class ResponseWriter implements ResponseStartWriter, ResponseHeaderWriter
     public FixedResponseBodyWriter beginBodyWithKnownSize(long size) throws HTTPWriteException {
         if (size < 0) throw new IllegalArgumentException();
         if (this.startedSendingData || this.status == null) throw new IllegalStateException();
-        this.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, size + "");
+        this.addHeader(BuiltinHeaders.CONTENT_LENGTH.headerKey, String.valueOf(size));
 
         sendHeader();
         return this;

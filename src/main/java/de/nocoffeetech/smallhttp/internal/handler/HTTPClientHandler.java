@@ -1,6 +1,7 @@
 package de.nocoffeetech.smallhttp.internal.handler;
 
 import de.nocoffeetech.smallhttp.base.ErrorHandler;
+import de.nocoffeetech.smallhttp.base.HTTPServer;
 import de.nocoffeetech.smallhttp.base.RequestHandler;
 import de.nocoffeetech.smallhttp.data.HTTPVersion;
 import de.nocoffeetech.smallhttp.data.Method;
@@ -13,7 +14,6 @@ import de.nocoffeetech.smallhttp.internal.watchdog.ClientHandlerTracker;
 import de.nocoffeetech.smallhttp.response.HTTPWriteException;
 import de.nocoffeetech.smallhttp.response.ResponseStartWriter;
 import de.nocoffeetech.smallhttp.response.ResponseToken;
-import de.nocoffeetech.smallhttp.base.HTTPServer;
 import de.nocoffeetech.smallhttp.util.StringUtil;
 import de.nocoffeetech.smallhttp.util.URLParser;
 
@@ -383,7 +383,7 @@ public class HTTPClientHandler implements Runnable {
                 newWriter(context, httpRequest.getVersion())
                         .respond(Status.CONTENT_TOO_LARGE, CommonContentTypes.PLAIN)
                         .addHeader(CONNECTION_CLOSE_HEADER)
-                        .writeBodyAndFlush("Received too long content, max is ", maxBodyLength + "", " bytes!");
+                        .writeBodyAndFlush("Received too long content, max is ", String.valueOf(maxBodyLength), " bytes!");
                 return false;
             }
             httpRequest.setRestBuffer(context.headerBuffer, read, availableBytes, inputStream, (int) length);

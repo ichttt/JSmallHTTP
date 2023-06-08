@@ -125,7 +125,7 @@ public class Loader {
             for (String name : globalConfigsByName.keySet()) {
                 LOGGER.error("\tNo entry for global config \"{}\"", name);
             }
-            throw new RuntimeException("Found unresolved global configs");
+            throw new RuntimeException("Found " + globalConfigsByName.size() + " unresolved global configs");
         }
         GlobalConfigLookup.setCurrentConfigs(configProviderMap);
     }

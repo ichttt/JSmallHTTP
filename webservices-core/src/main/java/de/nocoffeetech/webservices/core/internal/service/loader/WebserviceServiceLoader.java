@@ -1,12 +1,13 @@
 package de.nocoffeetech.webservices.core.internal.service.loader;
 
-import de.nocoffeetech.webservices.core.service.WebserviceProvider;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
+import de.nocoffeetech.webservices.core.service.WebserviceProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 public class WebserviceServiceLoader extends BaseServiceLoader<WebserviceProvider> {
     private static final Logger LOGGER = LogManager.getLogger(WebserviceServiceLoader.class);

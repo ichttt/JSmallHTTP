@@ -24,7 +24,7 @@ public abstract class WebserviceBase implements RequestHandler {
     private EndpointModule<?, ?> endpointModule;
     private FileServerModule[] fileServers = new FileServerModule[0];
     private RedirectInfo[] redirectInfos = new RedirectInfo[0];
-    protected String instanceName;
+    protected final String instanceName;
 
     /**
      * Constructs a new webservice

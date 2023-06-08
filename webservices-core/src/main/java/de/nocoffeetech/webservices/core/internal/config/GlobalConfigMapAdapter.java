@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class GlobalConfigMapAdapter implements JsonDeserializer<Map<String, GlobalConfig>> {
-    private GlobalConfigServiceLoader globalConfigLoader;
+    private final GlobalConfigServiceLoader globalConfigLoader;
 
     public GlobalConfigMapAdapter(GlobalConfigServiceLoader globalConfigLoader) {
         this.globalConfigLoader = globalConfigLoader;
