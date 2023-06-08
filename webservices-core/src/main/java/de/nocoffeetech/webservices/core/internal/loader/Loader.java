@@ -16,23 +16,15 @@ import de.nocoffeetech.webservices.core.internal.gui.GuiLoader;
 import de.nocoffeetech.webservices.core.internal.service.loader.GlobalConfigServiceLoader;
 import de.nocoffeetech.webservices.core.internal.service.loader.WebserviceServiceLoader;
 import de.nocoffeetech.webservices.core.service.InvalidConfigValueException;
+import de.nocoffeetech.webservices.core.service.VirtualServerManager;
 import de.nocoffeetech.webservices.core.service.WebserviceDefinition;
-import de.nocoffeetech.webservices.core.service.holder.GlobalConfigLookup;
-import de.nocoffeetech.webservices.core.service.holder.RealServiceHolder;
-import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
-import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
+import de.nocoffeetech.webservices.core.service.holder.*;
 import de.nocoffeetech.webservices.core.terminal.TerminalHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 public class Loader {
     public static final boolean DEV_MODE = Boolean.getBoolean("webservices.dev");
@@ -78,7 +70,7 @@ public class Loader {
             LOGGER.info("GUI is disabled in config");
         }
 
-        startupServices(webservices, configuration);
+        initAndStartupServices(webservices, configuration);
 
         if (DEV_MODE) {
             Thread thread = new Thread(Loader::periodicDevTasks);
@@ -138,7 +130,7 @@ public class Loader {
         GlobalConfigLookup.setCurrentConfigs(configProviderMap);
     }
 
-    private static void startupServices(WebserviceServiceLoader webservices, Configuration configuration) {
+    private static void initAndStartupServices(WebserviceServiceLoader webservices, Configuration configuration) {
         RootConfig rootConfig = configuration.getRootConfig();
         Map<BaseServiceConfig, WebserviceDefinition<?>> config2Definition = collectConfigs(rootConfig, webservices);
 
@@ -152,6 +144,16 @@ public class Loader {
             throw new RuntimeException("Failed to create service holders!", e);
         }
         ServiceHolderLookup.setServices(services);
+
+        for (ServiceHolder<?> service : services) {
+            if (service.getServiceConfiguration().autostart) {
+                try {
+                    service.startup();
+                } catch (IOException e) {
+                    LOGGER.error("Failed to start up server {}, skipping!", service.getInstanceName(), e);
+                }
+            }
+        }
     }
 
     private static void periodicDevTasks() {
@@ -199,7 +201,7 @@ public class Loader {
         return allConfigs;
     }
 
-    private static List<ServiceHolder<?>> createServices(RootConfig config, Map<BaseServiceConfig, WebserviceDefinition<?>> gatheredConfigs) throws IOException {
+    private static List<ServiceHolder<?>> createServices(RootConfig config, Map<BaseServiceConfig, WebserviceDefinition<?>> gatheredConfigs) {
         List<ServiceHolder<?>> serviceHolders = new ArrayList<>();
         for (ServerConfig serverConfig : config.servers) {
             if (serverConfig instanceof RealServerConfig realServerConfig) {
@@ -208,8 +210,20 @@ public class Loader {
                 serviceHolders.add(new RealServiceHolder<>(definition, realServerConfig, serviceConfig));
             } else if (serverConfig instanceof VirtualServerConfig virtualServerConfig) {
                 List<BaseServiceConfig> serviceConfigs = virtualServerConfig.gatherServices();
+                VirtualServerManager virtualServerManager = new VirtualServerManager(serverConfig.port);
                 for (BaseServiceConfig serviceConfig : serviceConfigs) {
                     WebserviceDefinition<?> definition = Objects.requireNonNull(gatheredConfigs.get(serviceConfig));
+                    String mapping = virtualServerConfig.mappings
+                            .entrySet()
+                            .stream()
+                            .filter(virtualMapping -> virtualMapping.getValue() == serviceConfig)
+                            .map(Map.Entry::getKey)
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Failed to find mapping for service " + serviceConfig.getInstanceName()));
+                    if (!mapping.startsWith("/") || !mapping.endsWith("/")) {
+                        throw new RuntimeException("Virtual mapping for service " + serviceConfig.getInstanceName() + " needs to start with and end with a Slash ('/'), but was \"" + mapping + "\"!");
+                    }
+                    serviceHolders.add(new VirtualServiceHolder<>(definition, virtualServerConfig, serviceConfig, mapping, virtualServerManager));
                 }
             } else {
                 throw new RuntimeException("Invalid configuration of type " + serverConfig.getClass());

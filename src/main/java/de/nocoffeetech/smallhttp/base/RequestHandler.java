@@ -10,7 +10,7 @@ public interface RequestHandler {
      * The main handler responsible for answering a client's HTTP request.
      * This method may be called on different threads for different requests at a time.
      * <br>
-     * An implementor MUST always a request, except for the case when the writing to the client fails (see {@link HTTPWriteException}
+     * An implementor MUST always handle a request, except for the case when the writing to the client fails (see {@link HTTPWriteException}
      * @param request The request the client wants to get answered
      * @param responseWriter The writer that can initiate the sending of a response to the client
      * @return A response token that is returned by the writer, signaling the successful handling of the request

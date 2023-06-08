@@ -4,15 +4,23 @@ import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.suggestion.Suggestion;
 import com.mojang.brigadier.suggestion.Suggestions;
+import de.nocoffeetech.webservices.core.service.holder.ServiceHolder;
+import de.nocoffeetech.webservices.core.service.holder.ServiceHolderLookup;
 import de.nocoffeetech.webservices.core.terminal.CommandHandler;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.swing.*;
-import javax.swing.text.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +55,10 @@ public class TerminalGui {
                 }
                 if (JOptionPane.showConfirmDialog(window, "Are you sure you want to shut down the server?", "Confirm Shutdown", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
                     GuiLogAppender.deactivate();
-                    System.exit(0); // TODO proper shutdown
+                    for (ServiceHolder<?> serviceHolder : ServiceHolderLookup.getAll()) {
+                        serviceHolder.shutdownIfPossible();
+                    }
+                    System.exit(0);
                 }
             }
         });

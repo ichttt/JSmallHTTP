@@ -18,7 +18,7 @@ public class VirtualServiceHolder<T extends BaseServiceConfig> extends ServiceHo
     private final VirtualServerManager virtualServer;
     private HTTPServer runningServer;
 
-    public VirtualServiceHolder(WebserviceDefinition<T> serviceDefinition, VirtualServerConfig virtualServerConfig, BaseServiceConfig serviceConfig, String prefix, VirtualServerManager virtualServer) throws IOException {
+    public VirtualServiceHolder(WebserviceDefinition<T> serviceDefinition, VirtualServerConfig virtualServerConfig, BaseServiceConfig serviceConfig, String prefix, VirtualServerManager virtualServer) {
         super(serviceDefinition, virtualServerConfig, serviceConfig);
         this.virtualServerConfig = virtualServerConfig;
         this.prefix = prefix;

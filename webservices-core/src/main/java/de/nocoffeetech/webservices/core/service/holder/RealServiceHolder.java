@@ -14,18 +14,16 @@ import java.io.IOException;
 
 public class RealServiceHolder<T extends BaseServiceConfig> extends ServiceHolder<T> {
     private static final Logger LOGGER = LogManager.getLogger(RealServiceHolder.class);
-    private final RealServerConfig realServerConfig;
     private HTTPServer runningServer;
 
-    public RealServiceHolder(WebserviceDefinition<T> serviceDefinition, RealServerConfig realServerConfig, BaseServiceConfig serviceConfig) throws IOException {
+    public RealServiceHolder(WebserviceDefinition<T> serviceDefinition, RealServerConfig realServerConfig, BaseServiceConfig serviceConfig) {
         super(serviceDefinition, realServerConfig, serviceConfig);
-        this.realServerConfig = realServerConfig;
     }
 
     @Override
     public void startupServerImpl(WebserviceBase webservice, String instanceName) throws IOException {
         this.runningServer = HTTPServerBuilder
-                .create(realServerConfig.port, webservice)
+                .create(serverConfig.port, webservice)
                 .setErrorHandler(new SmallHTTPErrorHandler(instanceName))
                 .build();
     }
@@ -35,7 +33,7 @@ public class RealServiceHolder<T extends BaseServiceConfig> extends ServiceHolde
         try {
             runningServer.shutdown(true);
         } catch (IOException e) {
-            LOGGER.error("Failed to shut down main server!");
+            LOGGER.error("Failed to shut down main server!", e);
             return;
         }
         runningServer = null;
@@ -43,6 +41,6 @@ public class RealServiceHolder<T extends BaseServiceConfig> extends ServiceHolde
 
     @Override
     public boolean isServerRunning() {
-        return !runningServer.isShutdown();
+        return runningServer != null && !runningServer.isShutdown();
     }
 }

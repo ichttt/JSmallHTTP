@@ -25,12 +25,10 @@ public abstract class ServiceHolder<T extends BaseServiceConfig> {
     private final List<RunningTask> runningTasks = new ArrayList<>();
 
 
-    public ServiceHolder(WebserviceDefinition<T> serviceDefinition, ServerConfig serverConfig, BaseServiceConfig serviceConfig) throws IOException {
+    public ServiceHolder(WebserviceDefinition<T> serviceDefinition, ServerConfig serverConfig, BaseServiceConfig serviceConfig) {
         this.serviceDefinition = serviceDefinition;
         this.serverConfig = serverConfig;
         this.serviceConfig = serviceDefinition.getConfigClass().cast(serviceConfig);
-        if (serviceConfig.autostart)
-            startup();
     }
 
     protected abstract void startupServerImpl(WebserviceBase webservice, String instanceName) throws IOException;
@@ -129,6 +127,10 @@ public abstract class ServiceHolder<T extends BaseServiceConfig> {
 
     public final String getInstanceName() {
         return serviceConfig.getInstanceName();
+    }
+
+    public final T getServiceConfiguration() {
+        return this.serviceConfig;
     }
 
     private void onBackgroundTaskDied(String name) {

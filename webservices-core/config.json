@@ -8,7 +8,7 @@
   [
     {
       "type": "real",
-      "port": "8080",
+      "port": 8080,
       "service": {
         "serviceIdentifier": "builtin:simple_fileserver",
         "instanceName": "TestFileServer",
@@ -32,6 +32,36 @@
             "permanent": false
           }
         ]
+      }
+    },
+    {
+      "type": "virtual",
+      "port": 8081,
+      "mappings": {
+        "/test1/": {
+          "serviceIdentifier": "builtin:simple_fileserver",
+          "instanceName": "TestFileServer2",
+          "autostart": true,
+          "folderInfos":
+          [
+            {
+              "prefixToServe": "",
+              "pathOnDisk": "./test",
+              "precompress": true,
+              "additionalHeaders": {
+                "Cache-Control": "no-cache"
+              }
+            }
+          ],
+          "redirectInfos":
+          [
+            {
+              "from": "/",
+              "to": "/test.html",
+              "permanent": false
+            }
+          ]
+        }
       }
     }
   ]
