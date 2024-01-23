@@ -12,7 +12,7 @@ public class HTTPVersionTest {
     @Test
     public void testCommonBytes() {
         for (HTTPVersion value : HTTPVersion.values()) {
-            assert value.name.equals(new String(HTTPVersion.COMMON_BYTES, StandardCharsets.US_ASCII) + ((char) value.lastByte));
+            Assertions.assertEquals(value.name, new String(HTTPVersion.COMMON_BYTES, StandardCharsets.US_ASCII) + ((char) value.lastByte));
         }
     }
 

@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.SocketChannel;
 
 public class BenchmarkClientHandler extends HTTPClientHandler {
     private final ByteArrayInputStream inputStream;
@@ -28,6 +29,11 @@ public class BenchmarkClientHandler extends HTTPClientHandler {
     @Override
     protected InputStream getInputStream() throws IOException {
         return inputStream;
+    }
+
+    @Override
+    protected SocketChannel getSocketChannel() {
+        return null;
     }
 
     @Override

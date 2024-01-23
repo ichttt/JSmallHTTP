@@ -43,33 +43,45 @@ public class HTTPServer {
     HTTPServer(HTTPServerBuilder builder) throws IOException {
         this.port = builder.getPort();
         this.errorHandler = builder.getErrorHandler();
-        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
-        serverSocketChannel.configureBlocking(true);
-        serverSocketChannel.bind(new InetSocketAddress(port));
-        this.mainSocket = serverSocketChannel;
-        this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> new Thread(r, "HTTPServer port " + port + " client handler " + threadNumber.getAndIncrement()));
-        this.handler = builder.getHandler();
-        this.socketTimeout = builder.getSocketTimeoutMillis();
-        this.allowTraceConnect = builder.isAllowTraceConnect();
-        this.builtinServerWideOptions = builder.isBuiltinServerWideOptions();
-        this.maxBodyLengthBytes = ((int) builder.getMaxClientBodyLengthKB()) * 1024;
+        ServerSocketChannel serverSocketChannel = null;
+        try {
+            serverSocketChannel = ServerSocketChannel.open();
+            serverSocketChannel.configureBlocking(true);
+            serverSocketChannel.bind(new InetSocketAddress(port));
+            this.mainSocket = serverSocketChannel;
+            this.executor = new ThreadPoolExecutor(0, builder.getThreadCount(), 5, TimeUnit.MINUTES, new SynchronousQueue<>(), r -> new Thread(r, "HTTPServer port " + port + " client handler " + threadNumber.getAndIncrement()));
+            this.handler = builder.getHandler();
+            this.socketTimeout = builder.getSocketTimeoutMillis();
+            this.allowTraceConnect = builder.isAllowTraceConnect();
+            this.builtinServerWideOptions = builder.isBuiltinServerWideOptions();
+            this.maxBodyLengthBytes = ((int) builder.getMaxClientBodyLengthKB()) * 1024;
 
-        this.mainSocketListener = new Thread(this::listen);
-        this.mainSocketListener.setName("HTTPServer port " + port + " listener");
-        this.mainSocketListener.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onListenerInternalException(this, e));
-        this.mainSocketListener.start();
+            this.mainSocketListener = new Thread(this::listen);
+            this.mainSocketListener.setName("HTTPServer port " + port + " listener");
+            this.mainSocketListener.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onListenerInternalException(this, e));
+            this.mainSocketListener.start();
 
-        int readTimeout = builder.getRequestHeaderReadTimeoutMillis();
-        int handlingTimeout = builder.getRequestHandlingTimeoutMillis();
-        if (readTimeout != -1 || handlingTimeout != -1) {
-            this.socketWatchdogThread = new Thread(new SocketWatchdog(readTimeout, handlingTimeout, this.tracker, this));
-            this.socketWatchdogThread.setPriority(Thread.MIN_PRIORITY);
-            this.socketWatchdogThread.setDaemon(true);
-            this.socketWatchdogThread.setName("HTTPServer port " + port + " watchdog");
-            this.socketWatchdogThread.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onWatchdogInternalException(this, e));
-            this.socketWatchdogThread.start();
-        } else {
-            this.socketWatchdogThread = null;
+            int readTimeout = builder.getRequestHeaderReadTimeoutMillis();
+            int handlingTimeout = builder.getRequestHandlingTimeoutMillis();
+            if (readTimeout != -1 || handlingTimeout != -1) {
+                this.socketWatchdogThread = new Thread(new SocketWatchdog(readTimeout, handlingTimeout, this.tracker, this));
+                this.socketWatchdogThread.setPriority(Thread.MIN_PRIORITY);
+                this.socketWatchdogThread.setDaemon(true);
+                this.socketWatchdogThread.setName("HTTPServer port " + port + " watchdog");
+                this.socketWatchdogThread.setUncaughtExceptionHandler((t, e) -> this.errorHandler.onWatchdogInternalException(this, e));
+                this.socketWatchdogThread.start();
+            } else {
+                this.socketWatchdogThread = null;
+            }
+        } catch (Exception e) {
+            if (serverSocketChannel != null) {
+                try {
+                    serverSocketChannel.close();
+                } catch (Exception e1) {
+                    e.addSuppressed(e1);
+                }
+            }
+            throw e;
         }
     }
 

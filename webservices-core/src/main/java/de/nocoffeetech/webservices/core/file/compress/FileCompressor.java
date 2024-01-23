@@ -81,7 +81,6 @@ public class FileCompressor {
                     if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
                         Object lock = LOCKS.computeIfAbsent(inCompressed, ignored -> new Object());
                         // synchronization on local var is desired here and safe - the object is controlled and only exists for this purpose
-                        //noinspection SynchronizationOnLocalVariableOrMethodParameter
                         synchronized (lock) {
                             // evaluate the condition again, maybe someone else already compressed while we waited for the lock
                             if (!Files.exists(inCompressed) || (compressionStrategy.validateStored && !Files.getLastModifiedTime(inCompressed).equals(srcLastModifiedTime))) {
@@ -114,8 +113,8 @@ public class FileCompressor {
             Files.createDirectories(target.getParent());
             target.toFile().deleteOnExit();
         }
-        OutputStream outputStream = Files.newOutputStream(target);
-        try (InputStream inputStream = Files.newInputStream(src);
+        try (OutputStream outputStream = Files.newOutputStream(target);
+             InputStream inputStream = Files.newInputStream(src);
              GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream)) {
             inputStream.transferTo(gzipOutputStream);
         }

@@ -104,10 +104,10 @@ public class URLParser {
         return start + 1 == end && buf[start] == '*';
     }
 
-    private int searchNext(int start, int max, char charToFind) {
-        byte[] toSearch = buf;
+    private int searchNext(int start, int max, char toFind) {
+        byte[] toSearch = this.buf;
         for (int i = start; i < max; i++) {
-            if (toSearch[i] == charToFind)
+            if (toSearch[i] == toFind)
                 return i;
         }
         return -1;

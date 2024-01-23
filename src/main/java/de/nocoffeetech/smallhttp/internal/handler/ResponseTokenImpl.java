@@ -33,7 +33,7 @@ public final class ResponseTokenImpl implements ResponseToken {
                 ResponseToken responseToken = TOKEN_TRACKER.get();
                 if (responseToken == null) throw new IllegalStateException("No response has been tracked yet!");
             }
-            TOKEN_TRACKER.set(null);
+            TOKEN_TRACKER.remove();
         }
     }
 }
