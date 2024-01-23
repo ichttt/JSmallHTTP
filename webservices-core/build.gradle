@@ -70,14 +70,50 @@ test {
     useJUnitPlatform()
 }
 
-tasks.register('copyDeps', Copy) {
-    from(sourceSets.main.runtimeClasspath)
-    include('*.jar')
-    includeEmptyDirs = false
-    into('build/deps/')
+tasks.register('generatePackage', Copy) {
+    //from 'config.json.example'
+    into "${buildDir}/release/"
 }
 
-jar.dependsOn(copyDeps)
+// Configure the custom task to copy specific files to the release folder
+generatePackage {
+    includeEmptyDirs = false
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    from('./example') {
+        include 'config.json.example'
+        rename { 'config.json' }
+        into '.'
+    }
+
+    from('./example/test') {
+        include '*'
+        into './test'
+    }
+
+    from("${buildDir}/libs") {
+        include 'webservices-launcher.jar'
+        into '.'
+    }
+
+    // Copy other files from libs to the plugins subfolder of the release folder
+    from("${buildDir}/libs") {
+        exclude 'webservices-launcher.jar'
+        into './plugins/'
+    }
+
+    // Copy the deps folder from the build directory to the libs subfolder of the release folder
+    from(sourceSets.main.runtimeClasspath) {
+        include('*.jar')
+        includeEmptyDirs = false
+        into './libs/'
+    }
+}
+
+// Add a dependency on the custom task to ensure it runs after the build
+generatePackage.dependsOn jar
+generatePackage.dependsOn 'launcherJar'
+build.dependsOn generatePackage
 
 tasks.register('launcherJar', Jar) {
     from(sourceSets.launcher.output)

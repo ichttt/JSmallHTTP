@@ -1,0 +1,36 @@
+{
+  "globalConfigs": {
+    "builtin": {
+      "disableGui": false
+    }
+  },
+  "servers":
+  [
+    {
+      "type": "real",
+      "port": 8080,
+      "service": {
+        "serviceIdentifier": "builtin:simple_fileserver",
+        "instanceName": "TestFileServer",
+        "autostart": true,
+        "folderInfos":
+        [
+          {
+            "prefixToServe": "",
+            "pathOnDisk": "test",
+            "precompress": true,
+            "additionalHeaders": {}
+          }
+        ],
+        "redirectInfos":
+        [
+          {
+            "from": "/",
+            "to": "/index.html",
+            "permanent": false
+          }
+        ]
+      }
+    }
+  ]
+}
